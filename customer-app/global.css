@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Browser preview: React Native inputs draw their own borders, so drop the browser's default focus outline */
+input:focus,
+textarea:focus {
+  outline: none;
+}

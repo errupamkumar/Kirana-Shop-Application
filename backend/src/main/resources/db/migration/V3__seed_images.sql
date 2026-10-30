@@ -1,0 +1,43 @@
+-- Starter photos for the seeded catalog (files ship in the jar under seed-images/, copied to MEDIA_DIR
+-- at startup by CatalogImageSeeder). Only fills empty images, so photos uploaded by the store are kept.
+
+UPDATE categories SET image_url = '/media/images/seed/cat-fruits-vegetables.jpg' WHERE id = 1 AND image_url IS NULL;
+UPDATE categories SET image_url = '/media/images/seed/cat-dairy-bread-eggs.jpg' WHERE id = 2 AND image_url IS NULL;
+UPDATE categories SET image_url = '/media/images/seed/cat-atta-rice-dal.jpg' WHERE id = 3 AND image_url IS NULL;
+UPDATE categories SET image_url = '/media/images/seed/cat-oil-ghee-masala.jpg' WHERE id = 4 AND image_url IS NULL;
+UPDATE categories SET image_url = '/media/images/seed/cat-snacks-biscuits.jpg' WHERE id = 5 AND image_url IS NULL;
+UPDATE categories SET image_url = '/media/images/seed/cat-cold-drinks-juices.jpg' WHERE id = 6 AND image_url IS NULL;
+UPDATE categories SET image_url = '/media/images/seed/cat-personal-care.jpg' WHERE id = 7 AND image_url IS NULL;
+UPDATE categories SET image_url = '/media/images/seed/cat-cleaning-essentials.jpg' WHERE id = 8 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p1-onion.jpg' WHERE id = 1 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p2-potato.jpg' WHERE id = 2 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p3-tomato.jpg' WHERE id = 3 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p4-banana.jpg' WHERE id = 4 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p5-coriander.jpg' WHERE id = 5 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p6-milk.jpg' WHERE id = 6 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p7-curd.jpg' WHERE id = 7 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p8-paneer.jpg' WHERE id = 8 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p9-brown-bread.jpg' WHERE id = 9 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p10-eggs.jpg' WHERE id = 10 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p11-butter.jpg' WHERE id = 11 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p12-atta.jpg' WHERE id = 12 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p13-basmati.jpg' WHERE id = 13 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p14-sona-masoori.jpg' WHERE id = 14 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p15-toor-dal.jpg' WHERE id = 15 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p16-moong-dal.jpg' WHERE id = 16 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p17-sunflower-oil.jpg' WHERE id = 17 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p18-ghee.jpg' WHERE id = 18 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p19-turmeric.jpg' WHERE id = 19 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p20-chilli-powder.jpg' WHERE id = 20 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p21-marie-biscuit.jpg' WHERE id = 21 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p22-potato-chips.jpg' WHERE id = 22 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p23-bhujia.jpg' WHERE id = 23 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p24-noodles.jpg' WHERE id = 24 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p25-cola.jpg' WHERE id = 25 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p26-mango-drink.jpg' WHERE id = 26 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p27-water.jpg' WHERE id = 27 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p28-soap.jpg' WHERE id = 28 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p29-toothpaste.jpg' WHERE id = 29 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p30-shampoo.jpg' WHERE id = 30 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p31-dishwash.jpg' WHERE id = 31 AND image_url IS NULL;
+UPDATE products SET image_url = '/media/images/seed/p32-detergent.jpg' WHERE id = 32 AND image_url IS NULL;

@@ -1,0 +1,51 @@
+name: kirana
+
+services:
+  mysql:
+    # Oracle's official MySQL image. Set MYSQL_IMAGE=mysql:8.4 to use Docker Hub instead.
+    image: ${MYSQL_IMAGE:-container-registry.oracle.com/mysql/community-server:8.4}
+    container_name: kirana-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
+      MYSQL_DATABASE: kirana
+      MYSQL_USER: ${DB_USER:-kirana}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-kirana}
+      TZ: UTC
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+00:00
+    ports:
+      # Host port 3307 by default so it does not clash with a locally installed MySQL
+      - "${MYSQL_PORT:-3307}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  # Optional: run the API in Docker too (docker compose --profile full up -d)
+  backend:
+    profiles: ["full"]
+    build: ./backend
+    container_name: kirana-backend
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/kirana
+      MEDIA_DIR: /data/media
+    ports:
+      - "8080:8080"
+    volumes:
+      - media:/data/media
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  mysql-data:
+  media:

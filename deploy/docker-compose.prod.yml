@@ -1,0 +1,89 @@
+# Production stack for one server (e.g. an Oracle Cloud Always Free VM).
+#
+#   cd deploy
+#   cp .env.prod.example .env.prod   # fill it in
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
+#
+# Only Caddy publishes ports (80/443). MySQL and the backend are reachable inside the Docker network only.
+name: kirana-prod
+
+services:
+  mysql:
+    image: ${MYSQL_IMAGE:-mysql:8.4}
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env.prod}
+      MYSQL_DATABASE: kirana
+      MYSQL_USER: ${DB_USER:-kirana}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env.prod}
+      TZ: UTC
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+00:00
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  backend:
+    build:
+      context: ../backend
+      args:
+        BASE_REGISTRY: ${BASE_REGISTRY:-docker.io/library}
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:mysql://mysql:3306/kirana
+      DB_USER: ${DB_USER:-kirana}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env.prod}
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?set APP_ENCRYPTION_KEY in .env.prod}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?set ADMIN_EMAIL in .env.prod}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env.prod}
+      CORS_ALLOWED_ORIGINS: https://${ADMIN_HOST},https://${SHOP_HOST}
+      OTP_PROVIDER: ${OTP_PROVIDER:-logging}
+      OTP_TEST_NUMBERS: ${OTP_TEST_NUMBERS:-}
+      MSG91_AUTH_KEY: ${MSG91_AUTH_KEY:-}
+      MSG91_TEMPLATE_ID: ${MSG91_TEMPLATE_ID:-}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+      MEDIA_DIR: /data/media
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=60
+    volumes:
+      - media:/data/media
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  web:
+    # Caddy with the built admin web and customer web app inside; terminates HTTPS for all three hosts
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+      args:
+        BASE_REGISTRY: ${BASE_REGISTRY:-docker.io/library}
+        API_URL: https://${API_HOST:?set API_HOST in .env.prod}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      ADMIN_HOST: ${ADMIN_HOST:?set ADMIN_HOST in .env.prod}
+      SHOP_HOST: ${SHOP_HOST:?set SHOP_HOST in .env.prod}
+      API_HOST: ${API_HOST}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env.prod}
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - backend
+
+volumes:
+  mysql-data:
+  media:
+  caddy-data:
+  caddy-config:

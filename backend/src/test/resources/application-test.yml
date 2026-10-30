@@ -1,0 +1,23 @@
+app:
+  jwt:
+    secret: test-jwt-secret-0123456789-abcdefghijklmnopqrstuvwxyz
+  # base64 of the 32 ASCII bytes "0123456789abcdef0123456789abcdef"
+  encryption-key: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+  admin:
+    email: admin@test.local
+    password: test-admin-pass
+  cors:
+    allowed-origins: http://localhost:5173
+  otp:
+    provider: logging
+    test-numbers: "+919999999999"
+    # Every test request comes from 127.0.0.1
+    max-sends-per-ip-per-hour: 0
+  media:
+    dir: target/test-media
+  payments:
+    razorpay-webhook-secret: test-webhook-secret
+
+logging:
+  level:
+    com.kirana: INFO

@@ -1,0 +1,11 @@
+logging:
+  level:
+    com.kirana: DEBUG
+
+app:
+  cors:
+    # Any local port, so the admin web still works if Vite starts on 5174
+    allowed-origins: "http://localhost:*,http://127.0.0.1:*"
+  otp:
+    # Always accept 123456 for these numbers in dev
+    test-numbers: "+919999999999,+919999999998,+919999999997"

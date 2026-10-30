@@ -1,0 +1,21 @@
+# Secrets
+.env
+deploy/.env.prod
+.env.local
+
+# Backend
+backend/target/
+backend/media/
+media/
+
+# Node (admin-web and customer-app also have their own .gitignore)
+node_modules/
+
+# IDE / OS
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

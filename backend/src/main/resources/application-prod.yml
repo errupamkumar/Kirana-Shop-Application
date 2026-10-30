@@ -1,0 +1,31 @@
+# Production profile: SPRING_PROFILES_ACTIVE=prod
+logging:
+  # One JSON object per line (Elastic Common Schema) for log shipping
+  structured:
+    format:
+      console: ecs
+  level:
+    root: INFO
+    com.kirana: INFO
+
+server:
+  # Behind a TLS-terminating reverse proxy (nginx, a load balancer)
+  forward-headers-strategy: framework
+  shutdown: graceful
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+# API docs are for development only
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true

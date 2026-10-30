@@ -1,0 +1,15 @@
+# Build context for deploy/web.Dockerfile is the repository root: keep it small and secret-free
+**/node_modules
+**/dist
+**/.expo
+customer-app/android
+customer-app/ios
+backend/target
+backend/media
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.prod.example
+.git
+.claude
+**/*.log
