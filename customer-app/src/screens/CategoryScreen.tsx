@@ -6,6 +6,7 @@ import { Container } from '../components/Screen';
 import { EmptyView, ErrorView, SkeletonGrid } from '../components/ui';
 import { useProducts } from '../hooks/queries';
 import { useLayout } from '../hooks/useLayout';
+import { useT } from '../i18n';
 import { errorMessage } from '../lib/api';
 import { categoryVisual } from '../lib/categoryVisuals';
 import type { AppScreenProps } from '../navigation/types';
@@ -13,12 +14,13 @@ import type { AppScreenProps } from '../navigation/types';
 export function CategoryScreen({ route, navigation }: AppScreenProps<'Category'>) {
   const { categoryId, name } = route.params;
   const layout = useLayout();
+  const t = useT();
   const query = useProducts(categoryId);
   const products = query.data?.pages.flatMap((p) => p.content) ?? [];
 
   useLayoutEffect(() => {
-    navigation.setOptions({ title: name ?? 'Products' });
-  }, [navigation, name]);
+    navigation.setOptions({ title: name ?? t('category.title') });
+  }, [navigation, name, t]);
 
   return (
     <View className="flex-1 bg-gray-50">
@@ -35,7 +37,7 @@ export function CategoryScreen({ route, navigation }: AppScreenProps<'Category'>
           loadingMore={query.isFetchingNextPage}
           refreshing={query.isRefetching && !query.isFetchingNextPage}
           onRefresh={() => void query.refetch()}
-          empty={<EmptyView emoji={categoryVisual(name).emoji} title="Nothing here yet" message="This category has no products right now." />}
+          empty={<EmptyView emoji={categoryVisual(name).emoji} title={t('category.emptyTitle')} message={t('category.emptyBody')} />}
         />
       )}
       <CartBar />

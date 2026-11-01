@@ -34,6 +34,8 @@ public class Product extends TimestampedEntity {
     private Category category;
 
     private String name;
+    /** Optional Hindi name; the apps fall back to {@link #name}. */
+    private String nameHi;
     private String description;
     private String brand;
     private String imageUrl;

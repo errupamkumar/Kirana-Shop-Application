@@ -6,6 +6,8 @@ import com.kirana.common.Money;
 import com.kirana.common.TimeZones;
 import com.kirana.order.CustomerOrderRepository;
 import com.kirana.order.OrderStatus;
+import com.kirana.request.OrderRequestRepository;
+import com.kirana.request.OrderRequestStatus;
 import com.kirana.settings.StoreSettingsService;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -31,6 +33,7 @@ public class DashboardService {
 
     private final CustomerOrderRepository orders;
     private final ProductVariantRepository variants;
+    private final OrderRequestRepository requests;
     private final StoreSettingsService settings;
     private final Clock clock;
 
@@ -43,7 +46,7 @@ public class DashboardService {
 
     public record DashboardResponse(long todayOrders, BigDecimal todayRevenue, Map<OrderStatus, Long> countsByStatus,
                                     long pendingOrders, int lowStockThreshold, long lowStockCount, List<LowStockItem> lowStock,
-                                    List<DayStat> last7Days) {
+                                    List<DayStat> last7Days, long pendingRequests) {
     }
 
     public DashboardResponse dashboard() {
@@ -58,7 +61,8 @@ public class DashboardService {
         for (Object[] row : orders.countByStatus()) {
             counts.put((OrderStatus) row[0], (Long) row[1]);
         }
-        long pending = counts.get(OrderStatus.PLACED) + counts.get(OrderStatus.PACKED) + counts.get(OrderStatus.OUT_FOR_DELIVERY);
+        long pending = counts.get(OrderStatus.PLACED) + counts.get(OrderStatus.ACCEPTED) + counts.get(OrderStatus.PACKED)
+                + counts.get(OrderStatus.OUT_FOR_DELIVERY);
 
         int threshold = settings.rules().lowStockThreshold();
         List<LowStockItem> lowStock = variants.findLowStock(threshold, PageRequest.of(0, LOW_STOCK_LIMIT)).stream()
@@ -86,7 +90,7 @@ public class DashboardService {
 
         return new DashboardResponse(orders.countPlacedBetween(startToday, startTomorrow),
                 Money.scale(orders.deliveredRevenueBetween(startToday, startTomorrow)), counts, pending, threshold,
-                variants.countLowStock(threshold), lowStock, days);
+                variants.countLowStock(threshold), lowStock, days, requests.countByStatus(OrderRequestStatus.PENDING));
     }
 
     private static LowStockItem lowStockItem(ProductVariant v) {

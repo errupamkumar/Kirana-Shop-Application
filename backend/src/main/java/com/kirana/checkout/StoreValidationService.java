@@ -75,7 +75,7 @@ public class StoreValidationService {
             if (v == null || !v.isListed()) {
                 inactive.add(variantId);
                 lines.add(v == null
-                        ? new QuoteLine(variantId, null, null, null, null, null, null, qty, Money.ZERO, LineIssue.VARIANT_INACTIVE)
+                        ? new QuoteLine(variantId, null, null, null, null, null, null, null, qty, Money.ZERO, LineIssue.VARIANT_INACTIVE)
                         : line(v, qty, LineIssue.VARIANT_INACTIVE));
                 continue;
             }
@@ -147,7 +147,7 @@ public class StoreValidationService {
     }
 
     private static QuoteLine line(ProductVariant v, int qty, LineIssue issue) {
-        return new QuoteLine(v.getId(), v.getProduct().getId(), v.getProduct().getName(), v.getLabel(),
+        return new QuoteLine(v.getId(), v.getProduct().getId(), v.getProduct().getName(), v.getProduct().getNameHi(), v.getLabel(),
                 v.getProduct().getImageUrl(), v.getMrp(), v.getSellingPrice(), qty, Money.times(v.getSellingPrice(), qty),
                 issue);
     }

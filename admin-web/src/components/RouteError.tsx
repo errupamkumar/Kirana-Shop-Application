@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { isRouteErrorResponse, useRouteError } from 'react-router'
 import { Button } from '@/components/ui/button'
+import { t } from '@/i18n'
 
 const RELOAD_KEY = 'kirana.admin.chunkReloadAt'
 
@@ -44,25 +45,25 @@ export function RouteError() {
   if (reloading) return null
 
   const message = chunkError
-    ? 'This page could not be loaded. The admin server may have restarted or moved. Check that it is running and that you are on the right address (normally http://localhost:5173).'
+    ? t('route.chunk')
     : isRouteErrorResponse(error)
       ? `${error.status} ${error.statusText}`
       : error instanceof Error
         ? error.message
-        : 'Something went wrong.'
+        : t('route.generic')
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
       <div role="alert" className="max-w-md rounded-lg border bg-background p-8 text-center shadow-sm">
         <AlertTriangle className="mx-auto size-8 text-destructive" />
-        <h1 className="mt-4 text-lg font-semibold">Something went wrong</h1>
+        <h1 className="mt-4 text-lg font-semibold">{t('route.title')}</h1>
         <p className="mt-2 text-sm text-muted-foreground">{message}</p>
         <div className="mt-6 flex justify-center gap-2">
           <Button onClick={() => window.location.reload()}>
-            <RefreshCw /> Reload
+            <RefreshCw /> {t('route.reload')}
           </Button>
           <Button variant="outline" onClick={() => window.location.assign('/')}>
-            Go to dashboard
+            {t('route.home')}
           </Button>
         </div>
       </div>

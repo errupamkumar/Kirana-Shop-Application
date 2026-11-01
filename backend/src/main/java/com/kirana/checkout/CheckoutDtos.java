@@ -46,7 +46,7 @@ public final class CheckoutDtos {
         VARIANT_INACTIVE
     }
 
-    public record QuoteLine(Long variantId, Long productId, String productName, String variantLabel, String imageUrl,
+    public record QuoteLine(Long variantId, Long productId, String productName, String productNameHi, String variantLabel, String imageUrl,
                             BigDecimal mrp, BigDecimal sellingPrice, int qty, BigDecimal lineTotal, LineIssue issue) {
     }
 

@@ -163,7 +163,7 @@ public abstract class IntegrationTest {
     protected ProductResponse createProduct(String price, String mrp, int stock) {
         long categoryId = catalog.listCategories().getFirst().id();
         String suffix = uniqueSuffix();
-        return catalog.createProduct(new ProductRequest(categoryId, "Test Product " + suffix, null, null, null, true,
+        return catalog.createProduct(new ProductRequest(categoryId, "Test Product " + suffix, null, null, null, null, true,
                 List.of(new VariantRequest(null, "1 pc", "TEST-" + suffix, new BigDecimal(mrp), new BigDecimal(price),
                         stock, true, 0, null))));
     }
@@ -173,7 +173,7 @@ public abstract class IntegrationTest {
     }
 
     protected long createCategory(String name) {
-        return catalog.createCategory(new CategoryRequest(name, null, null, 99, true)).id();
+        return catalog.createCategory(new CategoryRequest(name, null, null, null, 99, true)).id();
     }
 
     /** Restores the seeded store rules. */

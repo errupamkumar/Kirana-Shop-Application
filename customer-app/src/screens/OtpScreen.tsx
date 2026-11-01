@@ -4,6 +4,7 @@ import { KeyboardAvoidingView, Pressable, ScrollView, Text, TextInput, View } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NarrowColumn } from '../components/Screen';
 import { Button } from '../components/ui';
+import { useT } from '../i18n';
 import { api, errorMessage } from '../lib/api';
 import type { CustomerAuthResponse } from '../lib/types';
 import type { AuthScreenProps } from '../navigation/types';
@@ -15,6 +16,7 @@ const CODE_LENGTH = 6;
 export function OtpScreen({ route, navigation }: AuthScreenProps<'Otp'>) {
   const phone = route.params?.phone;
   const signIn = useAuthStore((s) => s.signIn);
+  const t = useT();
   const [otp, setOtp] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -66,10 +68,10 @@ export function OtpScreen({ route, navigation }: AuthScreenProps<'Otp'>) {
               <MessageSquareText size={26} color={colors.brand} />
             </View>
             <Text accessibilityRole="header" className="mt-5 text-2xl font-extrabold text-gray-900">
-              Enter verification code
+              {t('otp.title')}
             </Text>
             <Text className="mt-2 text-gray-500">
-              Sent by SMS to <Text className="font-bold text-gray-800">+91 {phone}</Text>
+              {t('otp.sentTo')} <Text className="font-bold text-gray-800">+91 {phone}</Text>
             </Text>
 
             {/* One input, drawn as six boxes: works with SMS autofill and paste */}
@@ -90,7 +92,7 @@ export function OtpScreen({ route, navigation }: AuthScreenProps<'Otp'>) {
                 })}
               </View>
               <TextInput
-                accessibilityLabel="One time password"
+                accessibilityLabel={t('otp.codeLabel')}
                 value={otp}
                 onChangeText={(t) => {
                   const code = t.replace(/\D/g, '').slice(0, CODE_LENGTH);
@@ -116,19 +118,19 @@ export function OtpScreen({ route, navigation }: AuthScreenProps<'Otp'>) {
             )}
             <View className="mt-5 flex-row items-center">
               {wait > 0 ? (
-                <Text className="text-gray-500">Resend code in {wait}s</Text>
+                <Text className="text-gray-500">{t('otp.resendIn', { seconds: wait })}</Text>
               ) : (
                 <Pressable accessibilityRole="button" onPress={() => void resend()} hitSlop={8}>
-                  <Text className="font-bold text-brand-600">Resend code</Text>
+                  <Text className="font-bold text-brand-600">{t('otp.resend')}</Text>
                 </Pressable>
               )}
               <Text className="mx-2 text-gray-300">·</Text>
               <Pressable accessibilityRole="button" onPress={() => navigation.goBack()} hitSlop={8}>
-                <Text className="font-bold text-gray-600">Change number</Text>
+                <Text className="font-bold text-gray-600">{t('otp.changeNumber')}</Text>
               </Pressable>
             </View>
             <View className="flex-1" />
-            <Button title="Verify and continue" className="mt-8" disabled={otp.length !== CODE_LENGTH} loading={loading} onPress={() => void verify()} />
+            <Button title={t('otp.verify')} className="mt-8" disabled={otp.length !== CODE_LENGTH} loading={loading} onPress={() => void verify()} />
           </NarrowColumn>
         </ScrollView>
       </KeyboardAvoidingView>

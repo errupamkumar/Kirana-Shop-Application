@@ -7,7 +7,8 @@ import { StatusActions } from './StatusActions'
 describe('nextStatuses (mirrors the server state machine for staff)', () => {
   it.each<[OrderStatus, OrderStatus[]]>([
     ['PENDING_PAYMENT', ['CANCELLED']],
-    ['PLACED', ['PACKED', 'CANCELLED']],
+    ['PLACED', ['ACCEPTED', 'CANCELLED']],
+    ['ACCEPTED', ['PACKED', 'CANCELLED']],
     ['PACKED', ['OUT_FOR_DELIVERY', 'CANCELLED']],
     ['OUT_FOR_DELIVERY', ['DELIVERED', 'CANCELLED']],
     ['DELIVERED', []],
@@ -26,7 +27,9 @@ describe('nextStatuses (mirrors the server state machine for staff)', () => {
 describe('StatusActions', () => {
   it('shows only the valid next step for a placed order', () => {
     render(<StatusActions status="PLACED" onChange={vi.fn()} />)
-    expect(screen.getByRole('button', { name: 'Mark packed' })).toBeInTheDocument()
+    // Every order is accepted first, then packed and dispatched
+    expect(screen.getByRole('button', { name: 'Accept order' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Mark packed' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Cancel order' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Mark delivered' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Out for delivery' })).not.toBeInTheDocument()

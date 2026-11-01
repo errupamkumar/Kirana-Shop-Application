@@ -21,6 +21,8 @@ public class Category extends TimestampedEntity {
     private Long id;
 
     private String name;
+    /** Optional Hindi name; the apps fall back to {@link #name}. */
+    private String nameHi;
     private String slug;
     private String imageUrl;
     private int sortOrder;

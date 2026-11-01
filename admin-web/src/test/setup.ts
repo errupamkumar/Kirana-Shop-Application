@@ -7,3 +7,7 @@ class ResizeObserverStub {
   disconnect() {}
 }
 globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver
+
+// The admin defaults to Hindi; component tests assert the English copy
+import { setLang } from '@/i18n'
+setLang('en')

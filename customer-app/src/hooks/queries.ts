@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { appendFile, type LocalFile } from '../lib/upload';
 import type {
   Address,
   AddressInput,
@@ -8,6 +9,7 @@ import type {
   Catalog,
   Me,
   OrderDetail,
+  OrderRequest,
   OrderStatus,
   OrderSummary,
   Page,
@@ -24,6 +26,8 @@ export const keys = {
   quote: (body: unknown) => ['quote', body] as const,
   myOrders: ['orders', 'my'] as const,
   order: (id: number) => ['orders', id] as const,
+  myRequests: ['requests', 'my'] as const,
+  request: (id: number) => ['requests', id] as const,
 };
 
 /** Store rules; refetched whenever the app returns to the foreground (focusManager in App.tsx). */
@@ -188,6 +192,65 @@ export function useVerifyPayment() {
     onSuccess: (order) => {
       qc.setQueryData(keys.order(order.id), order);
       void qc.invalidateQueries({ queryKey: keys.myOrders });
+    },
+  });
+}
+
+// ---------- Order requests: a list photo and/or voice note the store turns into an order ----------
+
+/** Recent requests; polls while any is still waiting for the store. */
+export function useMyRequests() {
+  return useQuery({
+    queryKey: keys.myRequests,
+    queryFn: async () => (await api.get<Page<OrderRequest>>('/app/order-requests/my', { params: { size: 50 } })).data,
+    refetchInterval: (query) => (query.state.data?.content.some((r) => r.status === 'PENDING') ? 20_000 : false),
+  });
+}
+
+/** One request; polls every 15 s until the store accepts or rejects it. */
+export function useRequest(id: number) {
+  return useQuery({
+    queryKey: keys.request(id),
+    queryFn: async () => (await api.get<OrderRequest>(`/app/order-requests/${id}`)).data,
+    refetchInterval: (query) => (query.state.data && query.state.data.status !== 'PENDING' ? false : 15_000),
+  });
+}
+
+export interface NewRequest {
+  addressId: number;
+  image?: LocalFile | null;
+  audio?: LocalFile | null;
+  audioSeconds?: number | null;
+  note?: string;
+}
+
+export function useCreateRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (req: NewRequest) => {
+      const form = new FormData();
+      form.append('addressId', String(req.addressId));
+      if (req.image) await appendFile(form, 'image', req.image);
+      if (req.audio) await appendFile(form, 'audio', req.audio);
+      if (req.audio && req.audioSeconds != null) form.append('audioSeconds', String(Math.round(req.audioSeconds)));
+      if (req.note?.trim()) form.append('note', req.note.trim());
+      // Photos and recordings can take a while on a slow connection
+      return (await api.post<OrderRequest>('/app/order-requests', form, { timeout: 120_000 })).data;
+    },
+    onSuccess: (request) => {
+      qc.setQueryData(keys.request(request.id), request);
+      void qc.invalidateQueries({ queryKey: keys.myRequests });
+    },
+  });
+}
+
+export function useCancelRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => (await api.post<OrderRequest>(`/app/order-requests/${id}/cancel`)).data,
+    onSuccess: (request) => {
+      qc.setQueryData(keys.request(request.id), request);
+      void qc.invalidateQueries({ queryKey: keys.myRequests });
     },
   });
 }

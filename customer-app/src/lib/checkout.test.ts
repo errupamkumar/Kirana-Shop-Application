@@ -103,10 +103,13 @@ describe('helpers', () => {
         { fromStatus: 'PLACED', toStatus: 'PACKED', changedByType: 'ADMIN', note: null, createdAt: '2026-10-30T05:10:00Z' },
       ],
     });
-    expect(steps.map((s) => s.done)).toEqual([true, true, false, false]);
-    expect(steps[1].current).toBe(true);
-    expect(steps[1].at).toBe('2026-10-30T05:10:00Z');
-    expect(steps[2].at).toBeNull();
+    // Placed, Accepted, Packed, Out for delivery, Delivered
+    expect(steps.map((s) => s.status)).toEqual(['PLACED', 'ACCEPTED', 'PACKED', 'OUT_FOR_DELIVERY', 'DELIVERED']);
+    expect(steps.map((s) => s.done)).toEqual([true, true, true, false, false]);
+    expect(steps[2].current).toBe(true);
+    expect(steps[2].at).toBe('2026-10-30T05:10:00Z');
+    expect(steps[1].at).toBeNull();
+    expect(steps[3].at).toBeNull();
 
     const cancelled = trackingSteps({ status: 'CANCELLED', history: [] });
     expect(cancelled.every((s) => !s.done)).toBe(true);

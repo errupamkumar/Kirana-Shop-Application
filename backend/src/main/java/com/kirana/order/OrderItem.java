@@ -29,6 +29,7 @@ public class OrderItem {
 
     private Long variantId;
     private String productName;
+    private String productNameHi;
     private String variantLabel;
     private String imageUrl;
     private BigDecimal mrp;

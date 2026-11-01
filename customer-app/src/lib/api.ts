@@ -1,4 +1,5 @@
 import axios, { AxiosError, isAxiosError, type InternalAxiosRequestConfig } from 'axios';
+import { hasMessage, t, useLanguageStore } from '../i18n';
 import { API_BASE_URL } from './env';
 import { secureStorage } from './secureStorage';
 import type { ApiErrorBody } from './types';
@@ -96,10 +97,24 @@ export function apiError(error: unknown): ApiErrorBody | undefined {
   return undefined;
 }
 
-/** Friendly message for alerts and inline errors. */
-export function errorMessage(error: unknown, fallback = 'Something went wrong. Please try again.'): string {
+/**
+ * Friendly message for alerts and inline errors. English shows the server's own (more specific) message; Hindi
+ * translates by error code. A closed store's message is the owner's own words, so it is shown as written.
+ */
+export function errorMessage(error: unknown, fallback?: string): string {
   const body = apiError(error);
-  if (body) return body.message;
-  if (isAxiosError(error) && !error.response) return 'No connection to the store. Check your internet.';
-  return fallback;
+  if (body) return localizedMessage(body.code, body.message, body.details);
+  if (isAxiosError(error) && !error.response) return t('error.offline');
+  return fallback ?? t('error.generic');
+}
+
+/** Server errors and checkout violations share codes; Hindi uses the translation for the code. */
+export function localizedMessage(code: string, message: string, details?: Record<string, unknown>): string {
+  if (useLanguageStore.getState().lang === 'en' || code === 'STORE_CLOSED') return message;
+  if (code === 'OTP_INVALID' && typeof details?.attemptsLeft === 'number') {
+    return t('error.OTP_INVALID_LEFT', { count: details.attemptsLeft });
+  }
+  if (code === 'VALIDATION_ERROR') return t('error.VALIDATION_ERROR', { message });
+  const key = `error.${code}`;
+  return hasMessage(key) ? t(key) : message;
 }

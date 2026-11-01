@@ -1,9 +1,10 @@
-import { AlertTriangle, Clock, IndianRupee, ShoppingBag } from 'lucide-react'
+import { AlertTriangle, Clock, IndianRupee, NotebookPen, ShoppingBag } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Link } from 'react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState, ErrorState, PageHeader, StatusBadge } from '@/components/common'
+import { dateLocale, getLang, useT } from '@/i18n'
 import { formatInr } from '@/lib/format'
 import { ALL_STATUSES } from '@/lib/orderStatus'
 import { useDashboard } from '@/lib/queries'
@@ -32,7 +33,7 @@ function Kpi({ label, value, icon: Icon, hint }: { label: string; value: string;
 }
 
 const dayLabel = (iso: string) =>
-  new Intl.DateTimeFormat('en-IN', { weekday: 'short', day: 'numeric' }).format(new Date(`${iso}T00:00:00`))
+  new Intl.DateTimeFormat(dateLocale(getLang()), { weekday: 'short', day: 'numeric' }).format(new Date(`${iso}T00:00:00`))
 
 function DayChart({ data, dataKey, title, format }: {
   data: Dashboard['last7Days']
@@ -74,12 +75,13 @@ function DayChart({ data, dataKey, title, format }: {
 }
 
 export default function DashboardPage() {
-  usePageTitle('Dashboard')
+  const t = useT()
+  usePageTitle(t('dashboard.title'))
   const { data, isLoading, error, refetch } = useDashboard()
 
   return (
     <>
-      <PageHeader title="Dashboard" description="Today at a glance. Refreshes every 30 seconds." />
+      <PageHeader title={t('dashboard.title')} description={t('dashboard.description')} />
       {error ? (
         <ErrorState error={error} onRetry={() => void refetch()} />
       ) : isLoading || !data ? (
@@ -90,16 +92,21 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Kpi label="Today's orders" value={String(data.todayOrders)} icon={ShoppingBag} />
-            <Kpi label="Today's revenue" value={formatInr(data.todayRevenue)} icon={IndianRupee} hint="Delivered orders" />
-            <Kpi label="Orders to fulfil" value={String(data.pendingOrders)} icon={Clock} hint="Placed, packed or out" />
-            <Kpi label="Low-stock variants" value={String(data.lowStockCount)} icon={AlertTriangle} hint={`Stock ≤ ${data.lowStockThreshold}`} />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <Kpi label={t('dashboard.todayOrders')} value={String(data.todayOrders)} icon={ShoppingBag} />
+            <Kpi label={t('dashboard.todayRevenue')} value={formatInr(data.todayRevenue)} icon={IndianRupee} hint={t('dashboard.deliveredOrders')} />
+            <Link to="/orders" className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <Kpi label={t('dashboard.toFulfil')} value={String(data.pendingOrders)} icon={Clock} hint={t('dashboard.toFulfilHint')} />
+            </Link>
+            <Link to="/requests" className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <Kpi label={t('dashboard.requestsWaiting')} value={String(data.pendingRequests)} icon={NotebookPen} hint={t('dashboard.requestsHint')} />
+            </Link>
+            <Kpi label={t('dashboard.lowStockVariants')} value={String(data.lowStockCount)} icon={AlertTriangle} hint={t('dashboard.stockAtMost', { n: data.lowStockThreshold })} />
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Orders by status</CardTitle>
+              <CardTitle className="text-base">{t('dashboard.byStatus')}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-3">
               {ALL_STATUSES.map((status) => (
@@ -116,17 +123,17 @@ export default function DashboardPage() {
           </Card>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <DayChart data={data.last7Days} dataKey="orders" title="Orders, last 7 days" format={(n) => `${n} orders`} />
-            <DayChart data={data.last7Days} dataKey="revenue" title="Delivered revenue, last 7 days" format={formatInr} />
+            <DayChart data={data.last7Days} dataKey="orders" title={t('dashboard.ordersChart')} format={(n) => t('dashboard.ordersTooltip', { n })} />
+            <DayChart data={data.last7Days} dataKey="revenue" title={t('dashboard.revenueChart')} format={formatInr} />
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Low stock</CardTitle>
+              <CardTitle className="text-base">{t('dashboard.lowStock')}</CardTitle>
             </CardHeader>
             <CardContent>
               {data.lowStock.length === 0 ? (
-                <EmptyState message="Every variant is above the low-stock threshold." />
+                <EmptyState message={t('dashboard.allStocked')} />
               ) : (
                 <ul className="divide-y">
                   {data.lowStock.map((item) => (
@@ -140,7 +147,7 @@ export default function DashboardPage() {
                         </span>
                       </span>
                       <span className={item.stockQty === 0 ? 'font-semibold text-destructive' : 'font-semibold'}>
-                        {item.stockQty === 0 ? 'Out of stock' : `${item.stockQty} left`}
+                        {item.stockQty === 0 ? t('dashboard.outOfStock') : t('dashboard.left', { n: item.stockQty })}
                       </span>
                     </li>
                   ))}

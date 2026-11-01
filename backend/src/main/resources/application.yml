@@ -21,8 +21,9 @@ spring:
     locations: classpath:db/migration
   servlet:
     multipart:
-      max-file-size: 2MB
-      max-request-size: 3MB
+      # Catalog images are limited to 2 MB in code; order requests carry a photo and a voice note (5 MB each)
+      max-file-size: 5MB
+      max-request-size: 11MB
 
 server:
   port: 8080

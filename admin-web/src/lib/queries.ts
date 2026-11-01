@@ -1,10 +1,12 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query'
 import { api } from './api'
 import type {
+  AcceptRequestBody,
   Category,
   Dashboard,
   Invoice,
   OrderDetail,
+  OrderRequest,
   OrderStatus,
   OrderSummary,
   Page,
@@ -22,6 +24,8 @@ export const keys = {
   orders: (params: OrderFilters) => ['orders', params] as const,
   order: (id: number) => ['order', id] as const,
   invoice: (id: number) => ['invoice', id] as const,
+  requests: (status: string, page: number) => ['requests', status, page] as const,
+  request: (id: number) => ['request', id] as const,
 }
 
 // ---- Dashboard ----
@@ -223,6 +227,69 @@ export function useUpdateOrderStatus() {
       void qc.invalidateQueries({ queryKey: ['products'] })
     },
   })
+}
+
+/** The public store rules (delivery charge, free-delivery threshold); readable by staff too, unlike /admin/settings. */
+export function useStoreRules() {
+  return useQuery({
+    queryKey: ['store-rules'],
+    queryFn: async () =>
+      (await api.get<{ deliveryCharge: number; freeDeliveryAbove: number | null; storeOpen: boolean }>('/app/config')).data,
+    staleTime: 60_000,
+  })
+}
+
+// ---- Order requests (list photos and voice notes) ----
+
+export function useOrderRequests(status: string, page: number) {
+  return useQuery({
+    queryKey: keys.requests(status, page),
+    queryFn: async () =>
+      (await api.get<Page<OrderRequest>>('/admin/order-requests', { params: { status: status || undefined, page, size: 20 } })).data,
+    placeholderData: keepPreviousData,
+    refetchInterval: 10_000,
+  })
+}
+
+/** Waiting requests, polled for the menu badge and the new-request chime. */
+export function usePendingRequestsFeed() {
+  return useQuery({
+    queryKey: ['requests', 'feed'],
+    queryFn: async () =>
+      (await api.get<Page<OrderRequest>>('/admin/order-requests', { params: { status: 'PENDING', page: 0, size: 50 } })).data,
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: true,
+  })
+}
+
+export function useOrderRequest(id: number | null) {
+  return useQuery({
+    queryKey: keys.request(id ?? 0),
+    queryFn: async () => (await api.get<OrderRequest>(`/admin/order-requests/${id}`)).data,
+    enabled: id != null,
+  })
+}
+
+function useRequestMutation<T>(path: (id: number) => string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, body }: { id: number; body: T }) => (await api.post<OrderRequest>(path(id), body)).data,
+    onSuccess: (data) => {
+      qc.setQueryData(keys.request(data.id), data)
+      void qc.invalidateQueries({ queryKey: ['requests'] })
+      void qc.invalidateQueries({ queryKey: ['orders'] })
+      void qc.invalidateQueries({ queryKey: keys.dashboard })
+      void qc.invalidateQueries({ queryKey: ['products'] })
+    },
+  })
+}
+
+export function useAcceptRequest() {
+  return useRequestMutation<AcceptRequestBody>((id) => `/admin/order-requests/${id}/accept`)
+}
+
+export function useRejectRequest() {
+  return useRequestMutation<{ reason: string }>((id) => `/admin/order-requests/${id}/reject`)
 }
 
 export function useInvoice(id: number) {

@@ -9,8 +9,9 @@ import java.util.Set;
  * Allowed status transitions per actor.
  * <pre>
  * PENDING_PAYMENT  -> PLACED | CANCELLED   (system: payment verified / failed or expired; admin may cancel)
- * PLACED           -> PACKED | CANCELLED   (customer may only cancel here)
- * PACKED           -> OUT_FOR_DELIVERY | CANCELLED (admin)
+ * PLACED           -> ACCEPTED | CANCELLED (admin accepts or rejects; customer may cancel)
+ * ACCEPTED         -> PACKED | CANCELLED   (admin; customer may still cancel until it is packed)
+ * PACKED           -> OUT_FOR_DELIVERY | CANCELLED (admin dispatches)
  * OUT_FOR_DELIVERY -> DELIVERED | CANCELLED (admin, e.g. customer refused delivery)
  * DELIVERED, CANCELLED: terminal
  * </pre>
@@ -19,12 +20,14 @@ public final class OrderStateMachine {
 
     private static final Map<OrderStatus, Set<OrderStatus>> ADMIN = Map.of(
             OrderStatus.PENDING_PAYMENT, EnumSet.of(OrderStatus.CANCELLED),
-            OrderStatus.PLACED, EnumSet.of(OrderStatus.PACKED, OrderStatus.CANCELLED),
+            OrderStatus.PLACED, EnumSet.of(OrderStatus.ACCEPTED, OrderStatus.CANCELLED),
+            OrderStatus.ACCEPTED, EnumSet.of(OrderStatus.PACKED, OrderStatus.CANCELLED),
             OrderStatus.PACKED, EnumSet.of(OrderStatus.OUT_FOR_DELIVERY, OrderStatus.CANCELLED),
             OrderStatus.OUT_FOR_DELIVERY, EnumSet.of(OrderStatus.DELIVERED, OrderStatus.CANCELLED));
 
     private static final Map<OrderStatus, Set<OrderStatus>> CUSTOMER = Map.of(
-            OrderStatus.PLACED, EnumSet.of(OrderStatus.CANCELLED));
+            OrderStatus.PLACED, EnumSet.of(OrderStatus.CANCELLED),
+            OrderStatus.ACCEPTED, EnumSet.of(OrderStatus.CANCELLED));
 
     private static final Map<OrderStatus, Set<OrderStatus>> SYSTEM = Map.of(
             OrderStatus.PENDING_PAYMENT, EnumSet.of(OrderStatus.PLACED, OrderStatus.CANCELLED));

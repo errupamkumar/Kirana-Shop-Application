@@ -6,14 +6,19 @@ import com.kirana.checkout.CheckoutDtos.CartQuote;
 import com.kirana.checkout.CheckoutDtos.Location;
 import com.kirana.checkout.CheckoutDtos.QuoteLine;
 import com.kirana.checkout.CheckoutDtos.Violation;
+import com.kirana.checkout.Pricing;
 import com.kirana.checkout.StoreValidationService;
 import com.kirana.common.ApiException;
 import com.kirana.common.ErrorCode;
+import com.kirana.common.Money;
 import com.kirana.config.AppProperties;
 import com.kirana.customer.CustomerService;
 import com.kirana.customer.User;
 import com.kirana.customer.UserAddress;
+import com.kirana.order.OrderDtos.AddressSnapshot;
+import com.kirana.order.OrderDtos.DraftLine;
 import com.kirana.order.OrderDtos.PlaceOrderRequest;
+import com.kirana.order.OrderDtos.RequestOrderDraft;
 import com.kirana.payment.Payment;
 import com.kirana.payment.PaymentGateway;
 import com.kirana.payment.PaymentGateway.GatewayOrder;
@@ -22,6 +27,7 @@ import com.kirana.payment.PaymentRepository;
 import com.kirana.payment.PaymentStatus;
 import com.kirana.settings.StoreRules;
 import com.kirana.settings.StoreSettingsService;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -124,6 +130,7 @@ public class OrderService {
             OrderItem item = new OrderItem();
             item.setVariantId(line.variantId());
             item.setProductName(line.productName());
+            item.setProductNameHi(line.productNameHi());
             item.setVariantLabel(line.variantLabel());
             item.setImageUrl(line.imageUrl());
             item.setMrp(line.mrp());
@@ -151,6 +158,106 @@ public class OrderService {
         } else {
             payment.setStatus(PaymentStatus.COD_PENDING);
         }
+        payments.save(payment);
+        return order;
+    }
+
+    /**
+     * Creates the order the store built from a customer's request (list photo or voice note). The store has already
+     * agreed to it, so it starts as ACCEPTED, paid on delivery. Catalog lines use today's prices and take stock; free-text
+     * lines are priced by the store. The minimum order does not apply: the store chose to take it.
+     */
+    @Transactional
+    public CustomerOrder createFromRequest(Long adminId, RequestOrderDraft draft) {
+        Map<Long, Integer> items = draft.catalogItems();
+        if (items.isEmpty() && draft.customItems().isEmpty()) {
+            throw ApiException.validation("items", "add at least one item");
+        }
+        Instant now = Instant.now(clock);
+        StoreRules rules = settings.rules();
+        Map<Long, ProductVariant> loaded = variants.findAllWithProductByIdIn(items.keySet()).stream()
+                .collect(Collectors.toMap(ProductVariant::getId, Function.identity()));
+        List<Long> unavailable = items.keySet().stream()
+                .filter(id -> !loaded.containsKey(id) || !loaded.get(id).isActive() || !loaded.get(id).getProduct().isActive())
+                .sorted()
+                .toList();
+        if (!unavailable.isEmpty()) {
+            throw new ApiException(ErrorCode.VARIANT_INACTIVE, "Some items are not sold any more",
+                    Map.of("variantIds", unavailable));
+        }
+        List<Long> failed = new ArrayList<>();
+        new TreeMap<>(items).forEach((variantId, qty) -> {
+            if (variants.decrementStock(variantId, qty) == 0) {
+                failed.add(variantId);
+            }
+        });
+        if (!failed.isEmpty()) {
+            throw new ApiException(ErrorCode.OUT_OF_STOCK, "Not enough stock for some items", Map.of("variantIds", failed));
+        }
+
+        CustomerOrder order = new CustomerOrder();
+        new TreeMap<>(items).forEach((variantId, qty) -> {
+            ProductVariant v = loaded.get(variantId);
+            OrderItem item = new OrderItem();
+            item.setVariantId(variantId);
+            item.setProductName(v.getProduct().getName());
+            item.setProductNameHi(v.getProduct().getNameHi());
+            item.setVariantLabel(v.getLabel());
+            item.setImageUrl(v.getProduct().getImageUrl());
+            item.setMrp(v.getMrp());
+            item.setSellingPrice(v.getSellingPrice());
+            item.setQty(qty);
+            item.setLineTotal(Money.times(v.getSellingPrice(), qty));
+            order.addItem(item);
+        });
+        for (DraftLine line : draft.customItems()) {
+            OrderItem item = new OrderItem();
+            item.setProductName(line.name().trim());
+            item.setVariantLabel(line.label() == null ? "" : line.label().trim());
+            item.setMrp(Money.scale(line.price()));
+            item.setSellingPrice(Money.scale(line.price()));
+            item.setQty(line.qty());
+            item.setLineTotal(Money.times(line.price(), line.qty()));
+            order.addItem(item);
+        }
+        BigDecimal subtotal = Money.scale(order.getItems().stream().map(OrderItem::getLineTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        BigDecimal fee = Pricing.deliveryFee(subtotal, rules.deliveryCharge(), rules.freeDeliveryAbove());
+
+        AddressSnapshot a = draft.address();
+        order.setOrderNumber(orderNumbers.next());
+        order.setUserId(draft.userId());
+        order.setRequestId(draft.requestId());
+        order.setStatus(OrderStatus.ACCEPTED);
+        order.setPaymentMethod(PaymentMethod.COD);
+        order.setPaymentStatus(PaymentStatus.COD_PENDING);
+        order.setItemSubtotal(subtotal);
+        order.setDeliveryFee(fee);
+        order.setTotal(Money.scale(subtotal.add(fee)));
+        order.setMinOrderAmountApplied(rules.minOrderAmount());
+        order.setAddrLabel(a.label());
+        order.setAddrName(a.name());
+        order.setAddrPhone(a.phone());
+        order.setAddrLine1(a.line1());
+        order.setAddrLine2(a.line2());
+        order.setAddrLandmark(a.landmark());
+        order.setAddrPincode(a.pincode());
+        order.setAddrLat(a.lat());
+        order.setAddrLng(a.lng());
+        order.setDistanceKm(draft.distanceKm());
+        order.setCustomerNote(draft.customerNote());
+        order.setPlacedAt(now);
+        // No note: the order carries requestId, and the apps show "made from list request" in the reader's language
+        order.addHistory(history(null, OrderStatus.PLACED, ActorType.CUSTOMER, draft.userId(), null, draft.requestedAt()));
+        order.addHistory(history(OrderStatus.PLACED, OrderStatus.ACCEPTED, ActorType.ADMIN, adminId,
+                draft.storeNote() == null || draft.storeNote().isBlank() ? null : draft.storeNote().trim(), now));
+        orders.saveAndFlush(order);
+
+        Payment payment = new Payment();
+        payment.setOrderId(order.getId());
+        payment.setMethod(PaymentMethod.COD);
+        payment.setAmount(order.getTotal());
+        payment.setStatus(PaymentStatus.COD_PENDING);
         payments.save(payment);
         return order;
     }

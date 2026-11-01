@@ -117,6 +117,45 @@ describe('SettingsForm', () => {
     expect(onSubmit.mock.calls[0][0]).toMatchObject({ minOrderAmount: 250, codEnabled: true })
   })
 
+  it('moves the store to pasted coordinates without calling the search service', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+    const onSubmit = vi.fn()
+    render(<SettingsForm initial={valid} onSubmit={onSubmit} />)
+    expect(screen.getByRole('region', { name: 'Store location map' })).toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText('Find your shop'), 'https://maps.google.com/?q=25.0961,85.3131{Enter}')
+    expect(screen.getByLabelText('Latitude')).toHaveValue(25.0961)
+    expect(screen.getByLabelText('Longitude')).toHaveValue(85.3131)
+    // Enter in the search box must not save the form
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(fetchSpy).not.toHaveBeenCalled()
+    await userEvent.click(screen.getByRole('button', { name: 'Save settings' }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0]).toMatchObject({ storeLat: 25.0961, storeLng: 85.3131, maxDeliveryRadiusKm: 5 })
+    fetchSpy.mockRestore()
+  })
+
+  it('searches places on OpenStreetMap without the admin token and fills the chosen one', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify([{ display_name: 'Station Road, Bihar Sharif, Nalanda, Bihar', lat: '25.1971', lon: '85.5236' }]), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+    render(<SettingsForm initial={valid} onSubmit={vi.fn()} />)
+    await userEvent.type(screen.getByLabelText('Find your shop'), 'Station Road Bihar Sharif')
+    await userEvent.click(screen.getByRole('button', { name: 'Find' }))
+    const result = await screen.findByRole('button', { name: /Station Road, Bihar Sharif/ })
+    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
+    expect(url).toMatch(/^https:\/\/nominatim\.openstreetmap\.org\/search\?/)
+    expect(url).toContain('countrycodes=in')
+    expect(new Headers(init.headers).has('authorization')).toBe(false)
+    await userEvent.click(result)
+    expect(screen.getByLabelText('Latitude')).toHaveValue(25.1971)
+    expect(screen.getByLabelText('Longitude')).toHaveValue(85.5236)
+    expect(screen.queryByRole('list', { name: 'Search results' })).not.toBeInTheDocument()
+    fetchSpy.mockRestore()
+  })
+
   it('tells the owner a stored secret is kept when left blank', () => {
     render(<SettingsForm initial={{ ...valid, gatewaySecretSet: true }} onSubmit={vi.fn()} />)
     expect(screen.getByText('Secret is set; leave blank to keep it')).toBeInTheDocument()

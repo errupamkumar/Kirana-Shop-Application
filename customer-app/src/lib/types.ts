@@ -72,6 +72,7 @@ export interface CustomerAuthResponse {
 export interface Category {
   id: number;
   name: string;
+  nameHi: string | null;
   slug: string;
   imageUrl: string | null;
 }
@@ -89,6 +90,7 @@ export interface Product {
   id: number;
   categoryId: number;
   name: string;
+  nameHi: string | null;
   description: string | null;
   brand: string | null;
   imageUrl: string | null;
@@ -133,6 +135,7 @@ export interface QuoteLine {
   variantId: number;
   productId: number | null;
   productName: string | null;
+  productNameHi: string | null;
   variantLabel: string | null;
   imageUrl: string | null;
   mrp: number | null;
@@ -168,7 +171,7 @@ export interface CartQuote {
   canPlaceOrder: boolean;
 }
 
-export type OrderStatus = 'PENDING_PAYMENT' | 'PLACED' | 'PACKED' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED';
+export type OrderStatus = 'PENDING_PAYMENT' | 'PLACED' | 'ACCEPTED' | 'PACKED' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED';
 
 export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUND_PENDING' | 'COD_PENDING' | 'COD_COLLECTED';
 
@@ -181,6 +184,7 @@ export interface OrderSummary {
   total: number;
   itemCount: number;
   placedAt: string;
+  requestId: number | null;
 }
 
 export interface OrderDetail {
@@ -209,6 +213,7 @@ export interface OrderDetail {
   items: {
     variantId: number | null;
     productName: string;
+    productNameHi: string | null;
     variantLabel: string;
     imageUrl: string | null;
     mrp: number;
@@ -232,4 +237,26 @@ export interface OrderDetail {
     currency: string;
     status: PaymentStatus;
   } | null;
+  /** Set when the store built this order from the customer's list photo or voice note. */
+  requestId: number | null;
+}
+
+export type RequestStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED';
+
+/** A list photo and/or voice note sent to the store. Media URLs are signed and expire after a few hours. */
+export interface OrderRequest {
+  id: number;
+  status: RequestStatus;
+  imageUrl: string | null;
+  audioUrl: string | null;
+  audioSeconds: number | null;
+  note: string | null;
+  address: OrderDetail['address'];
+  orderId: number | null;
+  orderNumber: string | null;
+  orderStatus: OrderStatus | null;
+  orderTotal: number | null;
+  rejectReason: string | null;
+  createdAt: string;
+  handledAt: string | null;
 }

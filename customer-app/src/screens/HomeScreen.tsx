@@ -1,5 +1,5 @@
 import { useNavigation } from '@react-navigation/native';
-import { ChevronDown, ChevronRight, MapPin, Search, Truck, UserRound } from 'lucide-react-native';
+import { Camera, ChevronDown, ChevronRight, MapPin, Mic, NotebookPen, Search, Truck, UserRound } from 'lucide-react-native';
 import { FlatList, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ServiceabilityBanner, StoreClosedBanner } from '../components/Banners';
@@ -11,6 +11,7 @@ import { ErrorView, Skeleton } from '../components/ui';
 import { useAddresses, useCatalog, useStoreConfig } from '../hooks/queries';
 import { useLayout, type Layout } from '../hooks/useLayout';
 import { recheckLocation } from '../hooks/useServiceability';
+import { localName, useLang, useT } from '../i18n';
 import { errorMessage } from '../lib/api';
 import { formatPrice } from '../lib/money';
 import type { Category, StoreConfig } from '../lib/types';
@@ -19,31 +20,36 @@ import { colors } from '../theme';
 
 function CategoryGrid({ categories, layout }: { categories: Category[]; layout: Layout }) {
   const navigation = useNavigation();
+  const lang = useLang();
   const gap = 10;
   const tile = Math.floor((layout.contentWidth - layout.gutter * 2 - gap * (layout.categoryColumns - 1)) / layout.categoryColumns);
   return (
     <View className="flex-row flex-wrap" style={{ gap }}>
-      {categories.map((c) => (
-        <Pressable
-          key={c.id}
-          accessibilityRole="button"
-          accessibilityLabel={c.name}
-          onPress={() => navigation.navigate('Category', { categoryId: c.id, name: c.name })}
-          style={{ width: tile }}
-          className="items-center active:opacity-70"
-        >
-          <ProductImage url={c.imageUrl} name={c.name} size={tile} category={c.slug} />
-          <Text numberOfLines={2} className="mt-1.5 text-center text-[12px] font-semibold leading-4 text-gray-800">
-            {c.name}
-          </Text>
-        </Pressable>
-      ))}
+      {categories.map((c) => {
+        const name = localName(c, lang);
+        return (
+          <Pressable
+            key={c.id}
+            accessibilityRole="button"
+            accessibilityLabel={name}
+            onPress={() => navigation.navigate('Category', { categoryId: c.id, name })}
+            style={{ width: tile }}
+            className="items-center active:opacity-70"
+          >
+            <ProductImage url={c.imageUrl} name={name} size={tile} category={c.slug} />
+            <Text numberOfLines={2} className="mt-1.5 text-center text-[12px] font-semibold leading-4 text-gray-800">
+              {name}
+            </Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
 
 /** Store promise strip: free-delivery threshold and minimum order, straight from the live store settings. */
 function PromiseStrip({ config }: { config: StoreConfig }) {
+  const t = useT();
   return (
     <View className="mt-3 flex-row items-center rounded-2xl bg-white p-3" style={{ borderWidth: 1, borderColor: colors.line }}>
       <View className="h-10 w-10 items-center justify-center rounded-full bg-brand-50">
@@ -51,11 +57,50 @@ function PromiseStrip({ config }: { config: StoreConfig }) {
       </View>
       <View className="ml-3 flex-1">
         <Text className="font-bold text-gray-900">
-          {config.freeDeliveryAbove != null ? `Free delivery above ${formatPrice(config.freeDeliveryAbove)}` : `Delivery ${formatPrice(config.deliveryCharge)}`}
+          {config.freeDeliveryAbove != null
+            ? t('home.freeDeliveryAbove', { amount: formatPrice(config.freeDeliveryAbove) })
+            : t('home.deliveryFee', { amount: formatPrice(config.deliveryCharge) })}
         </Text>
         <Text className="text-xs text-gray-600">
-          Minimum order {formatPrice(config.minOrderAmount)} · delivering within {config.maxDeliveryRadiusKm} km
+          {t('home.rules', { min: formatPrice(config.minOrderAmount), km: config.maxDeliveryRadiusKm })}
         </Text>
+      </View>
+    </View>
+  );
+}
+
+/** Entry to order requests: a photo of a handwritten list or a voice note; the store builds the order. */
+function RequestCard() {
+  const navigation = useNavigation();
+  const t = useT();
+  return (
+    <View className="mt-3 rounded-2xl bg-brand-50 p-4" style={{ borderWidth: 1, borderColor: '#bbf7d0' }}>
+      <View className="flex-row items-center">
+        <View className="h-10 w-10 items-center justify-center rounded-full bg-white">
+          <NotebookPen size={20} color={colors.brand} />
+        </View>
+        <View className="ml-3 flex-1">
+          <Text className="font-extrabold text-gray-900">{t('home.requestTitle')}</Text>
+          <Text className="mt-0.5 text-xs leading-4 text-gray-600">{t('home.requestBody')}</Text>
+        </View>
+      </View>
+      <View className="mt-3 flex-row gap-2">
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => navigation.navigate('RequestOrder', { mode: 'photo' })}
+          className="flex-1 flex-row items-center justify-center rounded-xl bg-brand-500 py-2.5 active:bg-brand-600"
+        >
+          <Camera size={18} color={colors.white} />
+          <Text className="ml-2 font-bold text-white">{t('home.requestPhoto')}</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => navigation.navigate('RequestOrder', { mode: 'voice' })}
+          className="flex-1 flex-row items-center justify-center rounded-xl border border-brand-500 bg-white py-2.5 active:bg-brand-50"
+        >
+          <Mic size={18} color={colors.brand} />
+          <Text className="ml-2 font-bold text-brand-600">{t('home.requestVoice')}</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -83,6 +128,8 @@ function HomeSkeleton({ layout }: { layout: Layout }) {
 export function HomeScreen() {
   const navigation = useNavigation();
   const layout = useLayout();
+  const t = useT();
+  const lang = useLang();
   const config = useStoreConfig();
   const catalog = useCatalog();
   const addresses = useAddresses();
@@ -110,7 +157,7 @@ export function HomeScreen() {
           <Container className="flex-row items-center justify-between">
             <Pressable
               accessibilityRole="button"
-              accessibilityHint="Choose delivery address"
+              accessibilityHint={t('home.chooseAddressHint')}
               onPress={() => navigation.navigate('Addresses', { select: true })}
               className="mr-3 flex-1 active:opacity-70"
             >
@@ -118,14 +165,14 @@ export function HomeScreen() {
               <View className="mt-0.5 flex-row items-center">
                 <MapPin size={16} color={colors.ink} />
                 <Text numberOfLines={1} className="ml-1 flex-shrink text-[17px] font-extrabold text-gray-900">
-                  {address ? `${address.label} · ${address.line1}` : 'Add delivery address'}
+                  {address ? `${address.label} · ${address.line1}` : t('home.addAddress')}
                 </Text>
                 <ChevronDown size={18} color={colors.ink} />
               </View>
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Your profile"
+              accessibilityLabel={t('home.profile')}
               onPress={() => navigation.navigate('Profile')}
               className="h-10 w-10 items-center justify-center rounded-full bg-white active:opacity-70"
             >
@@ -139,12 +186,12 @@ export function HomeScreen() {
           <Container>
             <Pressable
               accessibilityRole="search"
-              accessibilityLabel="Search products"
+              accessibilityLabel={t('home.search')}
               onPress={() => navigation.navigate('Search')}
               className="h-12 flex-row items-center rounded-xl bg-white px-3 active:opacity-80"
             >
               <Search size={20} color={colors.muted} />
-              <Text className="ml-2 text-gray-400">Search &quot;atta&quot;, &quot;milk&quot;, &quot;rice&quot;</Text>
+              <Text className="ml-2 text-gray-400">{t('home.searchHint')}</Text>
             </Pressable>
           </Container>
         </View>
@@ -153,6 +200,7 @@ export function HomeScreen() {
           <StoreClosedBanner config={config.data} />
           <ServiceabilityBanner />
           {config.data && <PromiseStrip config={config.data} />}
+          <RequestCard />
 
           {catalog.error ? (
             <ErrorView message={errorMessage(catalog.error)} onRetry={() => void catalog.refetch()} />
@@ -161,22 +209,24 @@ export function HomeScreen() {
           ) : (
             <>
               <Text accessibilityRole="header" className="mb-3 mt-6 text-lg font-extrabold text-gray-900">
-                Shop by category
+                {t('home.shopByCategory')}
               </Text>
               <CategoryGrid categories={catalog.data.categories} layout={layout} />
-              {catalog.data.sections.map((section) => (
+              {catalog.data.sections.map((section) => {
+                const sectionName = localName(section.category, lang);
+                return (
                 <View key={section.category.id} className="mt-7">
                   <View className="mb-3 flex-row items-center justify-between">
                     <Text accessibilityRole="header" className="text-lg font-extrabold text-gray-900">
-                      {section.category.name}
+                      {sectionName}
                     </Text>
                     <Pressable
                       accessibilityRole="button"
-                      accessibilityLabel={`See all ${section.category.name}`}
-                      onPress={() => navigation.navigate('Category', { categoryId: section.category.id, name: section.category.name })}
+                      accessibilityLabel={t('home.seeAllA11y', { name: sectionName })}
+                      onPress={() => navigation.navigate('Category', { categoryId: section.category.id, name: sectionName })}
                       className="flex-row items-center active:opacity-60"
                     >
-                      <Text className="font-bold text-brand-600">See all</Text>
+                      <Text className="font-bold text-brand-600">{t('home.seeAll')}</Text>
                       <ChevronRight size={16} color={colors.brandDark} />
                     </Pressable>
                   </View>
@@ -190,7 +240,8 @@ export function HomeScreen() {
                     renderItem={({ item }) => <ProductCard product={item} width={layout.rowCardWidth} />}
                   />
                 </View>
-              ))}
+                );
+              })}
             </>
           )}
         </Container>

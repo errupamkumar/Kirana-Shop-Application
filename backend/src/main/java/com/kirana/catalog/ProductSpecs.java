@@ -29,7 +29,7 @@ final class ProductSpecs {
         return active == null ? null : (root, query, cb) -> cb.equal(root.get("active"), active);
     }
 
-    /** Case-insensitive match on name or brand. */
+    /** Case-insensitive match on the English or Hindi name, or the brand. */
     static Specification<Product> matching(String q) {
         if (q == null || q.isBlank()) {
             return null;
@@ -37,6 +37,7 @@ final class ProductSpecs {
         String pattern = "%" + q.trim().toLowerCase(Locale.ROOT).replace("%", "\\%").replace("_", "\\_") + "%";
         return (root, query, cb) -> cb.or(
                 cb.like(cb.lower(root.get("name")), pattern),
+                cb.like(cb.coalesce(root.get("nameHi"), ""), pattern),
                 cb.like(cb.lower(cb.coalesce(root.get("brand"), "")), pattern));
     }
 }

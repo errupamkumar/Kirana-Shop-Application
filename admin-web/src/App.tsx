@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from '@/lib/auth'
 const LoginPage = lazy(() => import('@/pages/LoginPage'))
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
 const OrdersPage = lazy(() => import('@/pages/OrdersPage'))
+const RequestsPage = lazy(() => import('@/pages/RequestsPage'))
 const ProductsPage = lazy(() => import('@/pages/ProductsPage'))
 const CategoriesPage = lazy(() => import('@/pages/CategoriesPage'))
 const StoreSettingsPage = lazy(() => import('@/pages/StoreSettingsPage'))
@@ -53,6 +54,7 @@ const router = createBrowserRouter([
             children: [
               { index: true, element: <DashboardPage /> },
               { path: 'orders', element: <OrdersPage /> },
+              { path: 'requests', element: <RequestsPage /> },
               { path: 'products', element: <ProductsPage /> },
               { path: 'categories', element: <CategoriesPage /> },
               { path: 'settings', element: <AdminOnly><StoreSettingsPage /></AdminOnly> },

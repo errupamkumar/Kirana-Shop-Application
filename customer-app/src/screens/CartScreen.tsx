@@ -8,7 +8,8 @@ import { Container } from '../components/Screen';
 import { Button, Card, EmptyView, Row, SectionTitle } from '../components/ui';
 import { useAddresses, useCartQuote, usePlaceOrder, useStoreConfig, useVerifyPayment } from '../hooks/queries';
 import { useLayout } from '../hooks/useLayout';
-import { apiError, errorMessage } from '../lib/api';
+import { localName, t as tNow, useLang, useT, type MessageKey } from '../i18n';
+import { apiError, errorMessage, localizedMessage } from '../lib/api';
 import {
   deliveryFee as localDeliveryFee,
   freeDeliveryMessage,
@@ -27,31 +28,32 @@ import { useAuthStore, useCheckoutStore } from '../store/session';
 import { colors } from '../theme';
 
 const BLOCKING = ['STORE_CLOSED', 'VARIANT_INACTIVE', 'OUT_OF_STOCK', 'OUT_OF_RADIUS', 'PAYMENT_METHOD_DISABLED'];
-const PAYMENT: Record<PaymentMethod, { label: string; hint: string; icon: typeof Banknote }> = {
-  COD: { label: 'Cash on delivery', hint: 'Pay cash or UPI to the delivery person', icon: Banknote },
-  ONLINE: { label: 'Pay online', hint: 'UPI, cards, net banking (Razorpay)', icon: CreditCard },
+const PAYMENT: Record<PaymentMethod, { label: MessageKey; hint: MessageKey; icon: typeof Banknote }> = {
+  COD: { label: 'cart.cod', hint: 'cart.codHint', icon: Banknote },
+  ONLINE: { label: 'cart.online', hint: 'cart.onlineHint', icon: CreditCard },
 };
 
 // ---------- Sections ----------
 
 function MinOrderCard({ subtotal, minOrder }: { subtotal: number; minOrder: number }) {
+  const t = useT();
   const message = minOrderMessage(subtotal, minOrder);
   return (
     <Card>
       <View className="mb-2 flex-row items-center justify-between">
-        <Text className="font-bold text-gray-900">Minimum order {formatPrice(minOrder)}</Text>
+        <Text className="font-bold text-gray-900">{t('cart.minOrder', { amount: formatPrice(minOrder) })}</Text>
         {message ? <ShoppingBasket size={18} color="#b45309" /> : <CircleCheck size={18} color={colors.brand} />}
       </View>
       <View
         className="h-2 overflow-hidden rounded-full bg-gray-200"
         accessibilityRole="progressbar"
-        accessibilityLabel="Progress to minimum order"
+        accessibilityLabel={t('cart.minProgressA11y')}
         accessibilityValue={{ min: 0, max: 100, now: Math.round(minOrderProgress(subtotal, minOrder) * 100) }}
       >
         <View className="h-2 rounded-full bg-brand-500" style={{ width: `${minOrderProgress(subtotal, minOrder) * 100}%` }} />
       </View>
       <Text className={`mt-2 text-sm ${message ? 'font-semibold text-amber-700' : 'font-semibold text-brand-700'}`}>
-        {message ?? 'Minimum order reached'}
+        {message ?? t('cart.minReached')}
       </Text>
     </Card>
   );
@@ -59,26 +61,29 @@ function MinOrderCard({ subtotal, minOrder }: { subtotal: number; minOrder: numb
 
 function ItemsCard({ list, issues }: { list: CartItem[]; issues: Map<number, string | null> }) {
   const { increment, decrement, remove } = useCartStore.getState();
+  const t = useT();
+  const lang = useLang();
   return (
     <Card>
-      <SectionTitle title={`${list.length} ${list.length === 1 ? 'item' : 'items'} in your cart`} icon={ShoppingBasket} />
+      <SectionTitle title={list.length === 1 ? t('cart.itemsTitleOne') : t('cart.itemsTitle', { count: list.length })} icon={ShoppingBasket} />
       {list.map((item, index) => {
         const issue = issues.get(item.variantId);
+        const name = localName({ name: item.productName, nameHi: item.productNameHi }, lang);
         return (
           <View key={item.variantId} className={`flex-row items-center py-3 ${index > 0 ? 'border-t border-gray-100' : ''}`}>
             <ProductImage url={item.imageUrl} name={item.productName} size={56} />
             <View className="ml-3 flex-1 pr-2">
               <Text numberOfLines={2} className="font-semibold text-gray-900">
-                {item.productName}
+                {name}
               </Text>
               <Text className="text-xs text-gray-500">{item.variantLabel}</Text>
               {issue ? (
                 <View className="mt-1 flex-row items-center">
                   <CircleAlert size={14} color={colors.danger} />
-                  <Text className="ml-1 text-xs font-bold text-danger">{issue === 'OUT_OF_STOCK' ? 'Not enough stock' : 'No longer available'}</Text>
-                  <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${item.productName}`} onPress={() => remove(item.variantId)} className="ml-3 flex-row items-center">
+                  <Text className="ml-1 text-xs font-bold text-danger">{issue === 'OUT_OF_STOCK' ? t('cart.notEnoughStock') : t('cart.unavailable')}</Text>
+                  <Pressable accessibilityRole="button" accessibilityLabel={t('cart.removeA11y', { name })} onPress={() => remove(item.variantId)} className="ml-3 flex-row items-center">
                     <Trash2 size={13} color={colors.brandDark} />
-                    <Text className="ml-0.5 text-xs font-bold text-brand-600">Remove</Text>
+                    <Text className="ml-0.5 text-xs font-bold text-brand-600">{t('cart.remove')}</Text>
                   </Pressable>
                 </View>
               ) : (
@@ -92,7 +97,7 @@ function ItemsCard({ list, issues }: { list: CartItem[]; issues: Map<number, str
             </View>
             <QtyStepper
               qty={item.qty}
-              label={`${item.productName} ${item.variantLabel}`}
+              label={`${name} ${item.variantLabel}`}
               onIncrement={() => increment(item.variantId)}
               onDecrement={() => decrement(item.variantId)}
             />
@@ -111,14 +116,15 @@ function BillCard({ items, quote, subtotal, fee, total, cfg }: {
   total: number;
   cfg: StoreConfig | undefined;
 }) {
+  const t = useT();
   const freeMessage = cfg ? freeDeliveryMessage(subtotal, cfg.freeDeliveryAbove) : null;
   const savings = mrpSavings(items);
   return (
     <Card>
-      <SectionTitle title="Bill details" icon={ReceiptText} />
-      <Row label="Item total" value={formatInr(quote?.itemSubtotal ?? subtotal)} />
-      {savings > 0 && <Row label="You save on MRP" value={`− ${formatInr(savings)}`} valueClass="text-brand-600" />}
-      <Row label="Delivery fee" value={fee === 0 ? 'FREE' : formatInr(fee)} valueClass={fee === 0 ? 'font-bold text-brand-600' : undefined} />
+      <SectionTitle title={t('cart.bill')} icon={ReceiptText} />
+      <Row label={t('cart.itemTotal')} value={formatInr(quote?.itemSubtotal ?? subtotal)} />
+      {savings > 0 && <Row label={t('cart.savings')} value={`− ${formatInr(savings)}`} valueClass="text-brand-600" />}
+      <Row label={t('cart.deliveryFee')} value={fee === 0 ? t('cart.free') : formatInr(fee)} valueClass={fee === 0 ? 'font-bold text-brand-600' : undefined} />
       {freeMessage && (
         <View className="mt-1 flex-row items-center rounded-lg bg-brand-50 px-2 py-1.5">
           <Truck size={14} color={colors.brand} />
@@ -126,21 +132,22 @@ function BillCard({ items, quote, subtotal, fee, total, cfg }: {
         </View>
       )}
       <View className="my-2 h-px bg-gray-100" />
-      <Row label="To pay" value={formatInr(total)} strong />
+      <Row label={t('cart.toPay')} value={formatInr(total)} strong />
     </Card>
   );
 }
 
 function AddressCard({ address, quote, onChange }: { address: Address | undefined; quote: CartQuote | undefined; onChange: () => void }) {
   const radiusViolation = quote?.violations.find((v) => v.code === 'OUT_OF_RADIUS');
+  const t = useT();
   return (
     <Card>
       <SectionTitle
-        title="Deliver to"
+        title={t('cart.deliverTo')}
         icon={MapPin}
         right={
           <Pressable accessibilityRole="button" onPress={onChange} hitSlop={8}>
-            <Text className="font-bold text-brand-600">{address ? 'Change' : 'Add address'}</Text>
+            <Text className="font-bold text-brand-600">{address ? t('common.change') : t('cart.addAddress')}</Text>
           </Pressable>
         }
       />
@@ -150,18 +157,18 @@ function AddressCard({ address, quote, onChange }: { address: Address | undefine
           {address.line2 ? `, ${address.line2}` : ''} · {address.pincode}
         </Text>
       ) : (
-        <Text className="text-gray-500">Add an address to check delivery and see the final total.</Text>
+        <Text className="text-gray-500">{t('cart.addAddressHint')}</Text>
       )}
       {radiusViolation && (
         <View className="mt-2 flex-row items-start">
           <CircleAlert size={16} color={colors.danger} />
-          <Text className="ml-1.5 flex-1 text-sm font-semibold text-danger">{radiusViolation.message}</Text>
+          <Text className="ml-1.5 flex-1 text-sm font-semibold text-danger">{localizedMessage(radiusViolation.code, radiusViolation.message)}</Text>
         </View>
       )}
       {quote?.serviceable && quote.distanceKm != null && (
         <View className="mt-2 flex-row items-center">
           <CircleCheck size={14} color={colors.brand} />
-          <Text className="ml-1 text-xs font-semibold text-brand-700">We deliver here ({quote.distanceKm} km)</Text>
+          <Text className="ml-1 text-xs font-semibold text-brand-700">{t('cart.deliverHere', { km: quote.distanceKm })}</Text>
         </View>
       )}
     </Card>
@@ -181,10 +188,11 @@ function PaymentCard({
   note: string;
   setNote: (n: string) => void;
 }) {
+  const t = useT();
   return (
     <Card>
-      <SectionTitle title="Payment" icon={Banknote} />
-      {allowed.length === 0 && <Text className="text-gray-500">No payment method is available right now.</Text>}
+      <SectionTitle title={t('cart.payment')} icon={Banknote} />
+      {allowed.length === 0 && <Text className="text-gray-500">{t('cart.noPayment')}</Text>}
       {allowed.map((method) => {
         const option = PAYMENT[method];
         const checked = paymentMethod === method;
@@ -193,14 +201,14 @@ function PaymentCard({
             key={method}
             accessibilityRole="radio"
             accessibilityState={{ checked }}
-            accessibilityLabel={option.label}
+            accessibilityLabel={t(option.label)}
             onPress={() => setPaymentMethod(method)}
             className={`mb-2 flex-row items-center rounded-xl border p-3 ${checked ? 'border-brand-500 bg-brand-50' : 'border-gray-200 active:bg-gray-50'}`}
           >
             <option.icon size={20} color={checked ? colors.brand : colors.inkSoft} />
             <View className="ml-3 flex-1">
-              <Text className="font-bold text-gray-900">{option.label}</Text>
-              <Text className="text-xs text-gray-500">{option.hint}</Text>
+              <Text className="font-bold text-gray-900">{t(option.label)}</Text>
+              <Text className="text-xs text-gray-500">{t(option.hint)}</Text>
             </View>
             <View className={`h-5 w-5 items-center justify-center rounded-full border-2 ${checked ? 'border-brand-500' : 'border-gray-300'}`}>
               {checked && <View className="h-2.5 w-2.5 rounded-full bg-brand-500" />}
@@ -209,11 +217,11 @@ function PaymentCard({
         );
       })}
       <TextInput
-        accessibilityLabel="Note for the store"
+        accessibilityLabel={t('cart.noteA11y')}
         value={note}
         onChangeText={setNote}
         maxLength={300}
-        placeholder="Note for the store (optional), e.g. ring the bell twice"
+        placeholder={t('cart.notePlaceholder')}
         placeholderTextColor={colors.muted}
         className="mt-1 h-11 rounded-xl border border-gray-200 px-3 text-gray-900"
       />
@@ -226,6 +234,7 @@ function PaymentCard({
 export function CartScreen({ navigation }: AppScreenProps<'Cart'>) {
   const insets = useSafeAreaInsets();
   const layout = useLayout();
+  const t = useT();
   const items = useCartStore((s) => s.items);
   const { remove, syncPrices, clear } = useCartStore.getState();
   const user = useAuthStore((s) => s.user);
@@ -275,9 +284,9 @@ export function CartScreen({ navigation }: AppScreenProps<'Cart'>) {
     return (
       <EmptyView
         emoji="🧺"
-        title="Your cart is empty"
-        message="Fresh groceries are a tap away. Add a few items to get started."
-        action={<Button title="Start shopping" onPress={() => navigation.navigate('Tabs')} />}
+        title={t('cart.emptyTitle')}
+        message={t('cart.emptyBody')}
+        action={<Button title={t('cart.startShopping')} onPress={() => navigation.navigate('Tabs')} />}
       />
     );
   }
@@ -314,7 +323,7 @@ export function CartScreen({ navigation }: AppScreenProps<'Cart'>) {
       // The order exists and holds the stock; it can be paid from the order screen within 15 minutes
       clear();
       navigation.replace('OrderDetail', { orderId: order.id });
-      showAlert(result.cancelled ? 'Payment not completed' : 'Payment failed', `${result.message}. You can retry from the order screen.`);
+      showAlert(result.cancelled ? tNow('cart.paymentNotCompleted') : tNow('cart.paymentFailed'), tNow('cart.retryFromOrder', { message: result.message }));
       return;
     }
     verify.mutate(
@@ -333,7 +342,7 @@ export function CartScreen({ navigation }: AppScreenProps<'Cart'>) {
           setPaying(false);
           clear();
           navigation.replace('OrderDetail', { orderId: order.id });
-          showAlert('Payment not confirmed', errorMessage(e));
+          showAlert(tNow('cart.paymentNotConfirmed'), errorMessage(e));
         },
       },
     );
@@ -353,21 +362,21 @@ export function CartScreen({ navigation }: AppScreenProps<'Cart'>) {
           if (body?.code === 'PRICE_CHANGED') {
             const fresh = (body.details.quote as CartQuote | undefined)?.total;
             void quote.refetch();
-            showAlert('Prices updated', fresh != null ? `Your new total is ${formatInr(fresh)}.` : body.message, [
-              { text: 'Review', style: 'cancel' },
-              ...(fresh != null ? [{ text: 'Place order', onPress: () => placeOrder(fresh) }] : []),
+            showAlert(tNow('cart.pricesUpdated'), fresh != null ? tNow('cart.newTotal', { amount: formatInr(fresh) }) : errorMessage(e), [
+              { text: tNow('cart.review'), style: 'cancel' },
+              ...(fresh != null ? [{ text: tNow('cart.placeOrderShort'), onPress: () => placeOrder(fresh) }] : []),
             ]);
           } else if (body?.code === 'OUT_OF_STOCK' || body?.code === 'VARIANT_INACTIVE') {
             const ids = ((body.details.variantIds as number[] | undefined) ??
               (body.details.violations as { variantIds: number[] }[] | undefined)?.flatMap((v) => v.variantIds) ??
               []) as number[];
             void quote.refetch();
-            showAlert('Some items are unavailable', body.message, [
-              { text: 'Review', style: 'cancel' },
-              { text: 'Remove them', onPress: () => ids.forEach((id) => remove(id)) },
+            showAlert(tNow('cart.unavailableTitle'), errorMessage(e), [
+              { text: tNow('cart.review'), style: 'cancel' },
+              { text: tNow('cart.removeThem'), onPress: () => ids.forEach((id) => remove(id)) },
             ]);
           } else {
-            showAlert('Could not place order', errorMessage(e));
+            showAlert(tNow('cart.couldNotPlace'), errorMessage(e));
           }
         },
       },
@@ -384,7 +393,7 @@ export function CartScreen({ navigation }: AppScreenProps<'Cart'>) {
         <Text className="mb-2 text-center text-sm font-semibold text-gray-600">{disabledReason}</Text>
       )}
       <Button
-        title={busy ? (paying ? 'Waiting for payment…' : 'Placing order…') : `Place order · ${formatInr(total)}`}
+        title={busy ? (paying ? t('cart.waitingPayment') : t('cart.placing')) : t('cart.placeOrder', { amount: formatInr(total) })}
         disabled={!!disabledReason}
         loading={busy}
         onPress={() => quote.data && placeOrder(quote.data.total)}
@@ -396,8 +405,8 @@ export function CartScreen({ navigation }: AppScreenProps<'Cart'>) {
     <View accessibilityRole="alert" className="flex-row items-center rounded-2xl bg-gray-900 p-4">
       <Clock size={20} color={colors.accent} />
       <View className="ml-3 flex-1">
-        <Text className="font-bold text-white">Store is closed</Text>
-        <Text className="text-gray-300">{cfg.storeClosedMessage ?? 'Ordering is paused for now.'}</Text>
+        <Text className="font-bold text-white">{t('cart.storeClosed')}</Text>
+        <Text className="text-gray-300">{cfg.storeClosedMessage ?? t('cart.orderingPaused')}</Text>
       </View>
     </View>
   );
@@ -405,7 +414,7 @@ export function CartScreen({ navigation }: AppScreenProps<'Cart'>) {
   const problems = otherViolations.map((v) => (
     <View key={v.code} accessibilityRole="alert" className="flex-row items-start rounded-xl bg-red-50 p-3">
       <CircleAlert size={16} color={colors.danger} />
-      <Text className="ml-2 flex-1 text-sm font-semibold text-danger">{v.message}</Text>
+      <Text className="ml-2 flex-1 text-sm font-semibold text-danger">{localizedMessage(v.code, v.message)}</Text>
     </View>
   ));
 

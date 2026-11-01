@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import type { RazorpaySuccess } from 'react-native-razorpay';
 import type { OrderDetail } from './types';
 
@@ -11,14 +12,14 @@ export type RazorpayResult =
  */
 export async function openRazorpay(order: OrderDetail, storeName: string, phone: string): Promise<RazorpayResult> {
   if (!order.payment?.keyId) {
-    return { ok: false, cancelled: false, message: 'Online payment is not configured' };
+    return { ok: false, cancelled: false, message: t('pay.notConfigured') };
   }
   let RazorpayCheckout: typeof import('react-native-razorpay').default;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     RazorpayCheckout = require('react-native-razorpay').default;
   } catch {
-    return { ok: false, cancelled: false, message: 'Online payment needs the full app build (not Expo Go)' };
+    return { ok: false, cancelled: false, message: t('pay.needsApp') };
   }
   try {
     const data = await RazorpayCheckout.open({
@@ -39,7 +40,7 @@ export async function openRazorpay(order: OrderDetail, storeName: string, phone:
     return {
       ok: false,
       cancelled,
-      message: cancelled ? 'Payment cancelled' : err.error?.description ?? err.description ?? 'Payment failed',
+      message: cancelled ? t('pay.cancelled') : err.error?.description ?? err.description ?? t('pay.failed'),
     };
   }
 }

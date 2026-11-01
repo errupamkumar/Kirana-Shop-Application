@@ -32,7 +32,7 @@ public final class OrderDtos {
     public record StatusUpdateRequest(@NotNull OrderStatus status, @Size(max = 300) String note) {
     }
 
-    public record OrderItemDto(Long variantId, String productName, String variantLabel, String imageUrl,
+    public record OrderItemDto(Long variantId, String productName, String productNameHi, String variantLabel, String imageUrl,
                                BigDecimal mrp, BigDecimal sellingPrice, int qty, BigDecimal lineTotal) {
     }
 
@@ -51,7 +51,17 @@ public final class OrderDtos {
 
     public record OrderSummaryDto(Long id, String orderNumber, OrderStatus status, PaymentMethod paymentMethod,
                                   PaymentStatus paymentStatus, BigDecimal total, int itemCount, String customerName,
-                                  String customerPhone, Instant placedAt) {
+                                  String customerPhone, Instant placedAt, Long requestId) {
+    }
+
+    /** A line the store adds when building an order from a request: catalog (variantId set) or free text. */
+    public record DraftLine(String name, String label, java.math.BigDecimal price, int qty) {
+    }
+
+    /** Everything needed to create the order for an accepted request. */
+    public record RequestOrderDraft(Long userId, Long requestId, Instant requestedAt, AddressSnapshot address,
+                                    BigDecimal distanceKm, java.util.Map<Long, Integer> catalogItems,
+                                    List<DraftLine> customItems, String customerNote, String storeNote) {
     }
 
     public record OrderDetailDto(
@@ -73,7 +83,8 @@ public final class OrderDtos {
             List<StatusHistoryDto> history,
             boolean canCancel,
             List<OrderStatus> allowedNextStatuses,
-            OnlinePaymentDto payment) {
+            OnlinePaymentDto payment,
+            Long requestId) {
     }
 
     public record StoreInfo(String name, String address, String phone, String gstin) {

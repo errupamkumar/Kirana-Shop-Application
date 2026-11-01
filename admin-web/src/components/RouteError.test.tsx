@@ -41,6 +41,6 @@ describe('RouteError', () => {
 
     renderThrowing(chunkError)
     expect(reload).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('alert')).toHaveTextContent('http://localhost:5173')
+    expect(screen.getByRole('alert')).toHaveTextContent('admin server may have restarted')
   })
 })

@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react-native';
 import { ActivityIndicator, Pressable, Text, View, type PressableProps } from 'react-native';
+import { useT } from '../i18n';
 import { colors } from '../theme';
 
 type Variant = 'primary' | 'outline' | 'ghost' | 'danger';
@@ -58,8 +59,9 @@ export function Skeleton({ className, style }: { className?: string; style?: obj
 }
 
 export function SkeletonGrid({ count = 6, cardWidth }: { count?: number; cardWidth?: number }) {
+  const t = useT();
   return (
-    <View className="flex-row flex-wrap gap-3 p-4" accessibilityLabel="Loading">
+    <View className="flex-row flex-wrap gap-3 p-4" accessibilityLabel={t('common.loading')}>
       {Array.from({ length: count }, (_, i) => (
         <Skeleton key={i} className="h-60" style={{ width: cardWidth ?? '47%' }} />
       ))}
@@ -92,11 +94,12 @@ export function EmptyView({
 }
 
 export function ErrorView({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  const t = useT();
   return (
     <View className="items-center p-8" accessibilityRole="alert">
       <Text className="text-4xl">📡</Text>
       <Text className="mt-3 text-center font-semibold text-gray-800">{message}</Text>
-      {onRetry && <Button title="Try again" variant="outline" className="mt-4" onPress={onRetry} />}
+      {onRetry && <Button title={t('common.tryAgain')} variant="outline" className="mt-4" onPress={onRetry} />}
     </View>
   );
 }

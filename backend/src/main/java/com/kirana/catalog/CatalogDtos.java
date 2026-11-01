@@ -10,9 +10,9 @@ public final class CatalogDtos {
     private CatalogDtos() {
     }
 
-    public record CategoryDto(Long id, String name, String slug, String imageUrl) {
+    public record CategoryDto(Long id, String name, String nameHi, String slug, String imageUrl) {
         static CategoryDto from(Category c) {
-            return new CategoryDto(c.getId(), c.getName(), c.getSlug(), c.getImageUrl());
+            return new CategoryDto(c.getId(), c.getName(), c.getNameHi(), c.getSlug(), c.getImageUrl());
         }
     }
 
@@ -24,14 +24,14 @@ public final class CatalogDtos {
         }
     }
 
-    public record ProductDto(Long id, Long categoryId, String name, String description, String brand,
+    public record ProductDto(Long id, Long categoryId, String name, String nameHi, String description, String brand,
                              String imageUrl, List<VariantDto> variants) {
         static ProductDto from(Product p) {
             List<VariantDto> variants = p.getVariants().stream()
                     .filter(ProductVariant::isActive)
                     .map(VariantDto::from)
                     .toList();
-            return new ProductDto(p.getId(), p.getCategory().getId(), p.getName(), p.getDescription(),
+            return new ProductDto(p.getId(), p.getCategory().getId(), p.getName(), p.getNameHi(), p.getDescription(),
                     p.getBrand(), p.getImageUrl(), variants);
         }
     }

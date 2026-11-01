@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { addMoney, formatPrice } from './money';
 import type { PaymentMethod } from './types';
 
@@ -6,7 +7,7 @@ import type { PaymentMethod } from './types';
 /** "Add ₹X more to enable order", or null once the minimum is met. */
 export function minOrderMessage(itemSubtotal: number, minOrderAmount: number): string | null {
   const remaining = addMoney(minOrderAmount, -itemSubtotal);
-  return remaining > 0 ? `Add ${formatPrice(remaining)} more to enable order` : null;
+  return remaining > 0 ? t('cart.minMore', { amount: formatPrice(remaining) }) : null;
 }
 
 /** 0..1 progress toward the minimum order. */
@@ -23,7 +24,7 @@ export function deliveryFee(itemSubtotal: number, deliveryCharge: number, freeDe
 export function freeDeliveryMessage(itemSubtotal: number, freeDeliveryAbove: number | null): string | null {
   if (freeDeliveryAbove == null) return null;
   const remaining = addMoney(freeDeliveryAbove, -itemSubtotal);
-  return remaining > 0 ? `Add ${formatPrice(remaining)} more for free delivery` : null;
+  return remaining > 0 ? t('cart.freeMore', { amount: formatPrice(remaining) }) : null;
 }
 
 export interface PlaceOrderState {
@@ -42,13 +43,13 @@ export interface PlaceOrderState {
  * the store is closed, no payment method is chosen, a quote is in flight, or the server reported a problem.
  */
 export function placeOrderDisabledReason(s: PlaceOrderState): string | null {
-  if (!s.storeOpen) return 'Store is closed right now';
+  if (!s.storeOpen) return t('cart.reason.closed');
   if (s.itemSubtotal < s.minOrderAmount) return minOrderMessage(s.itemSubtotal, s.minOrderAmount);
-  if (!s.hasAddress) return 'Add a delivery address';
-  if (s.serviceable !== true) return "We don't deliver to this address yet";
-  if (!s.paymentMethod) return 'Choose a payment method';
-  if (s.validating) return 'Checking prices…';
-  if (s.hasBlockingIssues) return 'Fix the items marked above';
+  if (!s.hasAddress) return t('cart.reason.addAddress');
+  if (s.serviceable !== true) return t('cart.reason.notServiceable');
+  if (!s.paymentMethod) return t('cart.reason.choosePayment');
+  if (s.validating) return t('cart.reason.checking');
+  if (s.hasBlockingIssues) return t('cart.reason.fixItems');
   return null;
 }
 

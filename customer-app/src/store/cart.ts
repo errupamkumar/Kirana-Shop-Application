@@ -10,6 +10,8 @@ export interface CartItem {
   variantId: number;
   productId: number;
   productName: string;
+  /** Hindi name when the store set one (shown in Hindi mode). */
+  productNameHi?: string | null;
   variantLabel: string;
   imageUrl: string | null;
   sellingPrice: number;

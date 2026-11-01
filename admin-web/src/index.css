@@ -123,6 +123,25 @@
     --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Store location map (Leaflet): pin and delivery circle in the chart accent; tiles dimmed in dark mode */
+.store-pin {
+    color: var(--series-1);
+    filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.35));
+}
+.store-radius {
+    stroke: var(--series-1);
+    stroke-width: 2;
+    fill: var(--series-1);
+    fill-opacity: 0.12;
+}
+.leaflet-container {
+    font: inherit;
+    background: var(--muted);
+}
+.dark .leaflet-tile-pane {
+    filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

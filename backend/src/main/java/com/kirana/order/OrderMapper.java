@@ -23,13 +23,14 @@ public class OrderMapper {
 
     public OrderSummaryDto summary(CustomerOrder o) {
         return new OrderSummaryDto(o.getId(), o.getOrderNumber(), o.getStatus(), o.getPaymentMethod(),
-                o.getPaymentStatus(), o.getTotal(), o.itemCount(), o.getAddrName(), o.getAddrPhone(), o.getPlacedAt());
+                o.getPaymentStatus(), o.getTotal(), o.itemCount(), o.getAddrName(), o.getAddrPhone(), o.getPlacedAt(),
+                o.getRequestId());
     }
 
     /** Detail as seen by {@code viewer}: customers get {@code canCancel}, staff get the next allowed statuses. */
     public OrderDetailDto detail(CustomerOrder o, ActorType viewer) {
         List<OrderItemDto> items = o.getItems().stream()
-                .map(i -> new OrderItemDto(i.getVariantId(), i.getProductName(), i.getVariantLabel(), i.getImageUrl(),
+                .map(i -> new OrderItemDto(i.getVariantId(), i.getProductName(), i.getProductNameHi(), i.getVariantLabel(), i.getImageUrl(),
                         i.getMrp(), i.getSellingPrice(), i.getQty(), i.getLineTotal()))
                 .toList();
         List<StatusHistoryDto> history = o.getHistory().stream()
@@ -44,7 +45,7 @@ public class OrderMapper {
         return new OrderDetailDto(o.getId(), o.getOrderNumber(), o.getStatus(), o.getPaymentMethod(), o.getPaymentStatus(),
                 o.getItemSubtotal(), o.getDeliveryFee(), o.getTotal(), o.getDistanceKm(), o.getCustomerNote(),
                 o.getCancelReason(), o.getPlacedAt(), o.getDeliveredAt(), address, items, history, canCancel, next,
-                onlinePayment(o));
+                onlinePayment(o), o.getRequestId());
     }
 
     private OnlinePaymentDto onlinePayment(CustomerOrder o) {

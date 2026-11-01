@@ -7,6 +7,7 @@ import { toast } from '../components/Toast';
 import { Button, Card, ErrorView, SectionTitle, Skeleton } from '../components/ui';
 import { useAddresses, useSaveAddress } from '../hooks/queries';
 import { checkServiceability, currentCoords } from '../hooks/useServiceability';
+import { addressLabel, t as tNow, useT, type MessageKey } from '../i18n';
 import { apiError, errorMessage } from '../lib/api';
 import { showAlert } from '../lib/dialog';
 import type { Address, LocationCheck } from '../lib/types';
@@ -34,6 +35,7 @@ function Input({ label, error, ...props }: React.ComponentProps<typeof TextInput
 }
 
 function AddressForm({ existing, onSaved }: { existing?: Address; onSaved: () => void }) {
+  const t = useT();
   const save = useSaveAddress();
   const setAddressId = useCheckoutStore((s) => s.setAddressId);
   const [label, setLabel] = useState(existing?.label ?? 'Home');
@@ -72,7 +74,7 @@ function AddressForm({ existing, onSaved }: { existing?: Address; onSaved: () =>
   async function fillFromGps() {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
-      showAlert('Location permission needed', 'Allow location to pin your address automatically, or enter the coordinates manually.');
+      showAlert(tNow('address.permissionTitle'), tNow('address.permissionBody'));
       setManual(true);
       return;
     }
@@ -83,7 +85,7 @@ function AddressForm({ existing, onSaved }: { existing?: Address; onSaved: () =>
       setLatText(String(found.lat));
       setLngText(String(found.lng));
     } catch {
-      showAlert('Could not get your location', 'Please try again, or enter the coordinates manually.');
+      showAlert(tNow('address.locateFailedTitle'), tNow('address.locateFailedBody'));
       setManual(true);
     } finally {
       setLocating(false);
@@ -100,9 +102,9 @@ function AddressForm({ existing, onSaved }: { existing?: Address; onSaved: () =>
 
   function submit() {
     const next: Record<string, string> = {};
-    if (!line1.trim()) next.line1 = 'Required';
-    if (!/^[1-9]\d{5}$/.test(pincode)) next.pincode = 'Enter a 6 digit PIN code';
-    if (!coords) next.location = 'Pin the location with "Use current location" or enter coordinates';
+    if (!line1.trim()) next.line1 = t('address.required');
+    if (!/^[1-9]\d{5}$/.test(pincode)) next.pincode = t('address.pinInvalid');
+    if (!coords) next.location = t('address.locationRequired');
     setErrors(next);
     if (Object.keys(next).length > 0 || !coords) return;
     save.mutate(
@@ -113,23 +115,23 @@ function AddressForm({ existing, onSaved }: { existing?: Address; onSaved: () =>
       {
         onSuccess: (saved) => {
           setAddressId(saved.id);
-          toast.success(existing ? 'Address updated' : 'Address saved');
+          toast.success(existing ? tNow('address.updated') : tNow('address.saved'));
           onSaved();
         },
         onError: (e) => {
           const details = apiError(e)?.details as Record<string, string> | undefined;
           if (details) setErrors(details);
-          showAlert('Could not save address', errorMessage(e));
+          showAlert(tNow('address.couldNotSave'), errorMessage(e));
         },
       },
     );
   }
 
-  const nudges: [string, number, number, typeof ArrowUp][] = [
-    ['North', NUDGE, 0, ArrowUp],
-    ['South', -NUDGE, 0, ArrowDown],
-    ['East', 0, NUDGE, ArrowRight],
-    ['West', 0, -NUDGE, ArrowLeft],
+  const nudges: [MessageKey, number, number, typeof ArrowUp][] = [
+    ['address.north', NUDGE, 0, ArrowUp],
+    ['address.south', -NUDGE, 0, ArrowDown],
+    ['address.east', 0, NUDGE, ArrowRight],
+    ['address.west', 0, -NUDGE, ArrowLeft],
   ];
 
   return (
@@ -137,9 +139,9 @@ function AddressForm({ existing, onSaved }: { existing?: Address; onSaved: () =>
       <ScrollView className="flex-1 bg-gray-50" contentContainerStyle={{ padding: 12, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
         <NarrowColumn className="gap-3">
           <Card>
-            <SectionTitle title="Delivery location" icon={LocateFixed} />
+            <SectionTitle title={t('address.location')} icon={LocateFixed} />
             <Button
-              title={locating ? 'Locating…' : coords ? 'Use current location again' : 'Use current location'}
+              title={locating ? t('address.locating') : coords ? t('address.useLocationAgain') : t('address.useLocation')}
               variant="outline"
               icon={LocateFixed}
               loading={locating}
@@ -148,20 +150,20 @@ function AddressForm({ existing, onSaved }: { existing?: Address; onSaved: () =>
             {coords && (
               <View className="mt-3">
                 <Text className="text-xs text-gray-500">
-                  Pinned at {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
+                  {t('address.pinnedAt', { lat: coords.lat.toFixed(6), lng: coords.lng.toFixed(6) })}
                 </Text>
-                <Text className="mt-2 text-xs text-gray-600">Adjust the pin if it is slightly off (about 11 m per tap):</Text>
+                <Text className="mt-2 text-xs text-gray-600">{t('address.adjustHint')}</Text>
                 <View className="mt-1.5 flex-row flex-wrap gap-2">
                   {nudges.map(([name, dLat, dLng, Icon]) => (
                     <Pressable
                       key={name}
                       accessibilityRole="button"
-                      accessibilityLabel={`Move pin ${name}`}
+                      accessibilityLabel={t('address.movePin', { direction: t(name) })}
                       onPress={() => nudge(dLat, dLng)}
                       className="flex-row items-center rounded-lg border border-gray-300 px-2.5 py-1.5 active:bg-gray-100"
                     >
                       <Icon size={14} color={colors.inkSoft} />
-                      <Text className="ml-1 text-xs font-semibold text-gray-700">{name}</Text>
+                      <Text className="ml-1 text-xs font-semibold text-gray-700">{t(name)}</Text>
                     </Pressable>
                   ))}
                   <Pressable
@@ -169,7 +171,7 @@ function AddressForm({ existing, onSaved }: { existing?: Address; onSaved: () =>
                     onPress={() => void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}`)}
                     className="flex-row items-center rounded-lg px-2.5 py-1.5"
                   >
-                    <Text className="text-xs font-bold text-brand-600">Check on map</Text>
+                    <Text className="text-xs font-bold text-brand-600">{t('address.checkMap')}</Text>
                     <ExternalLink size={12} color={colors.brandDark} style={{ marginLeft: 4 }} />
                   </Pressable>
                 </View>
@@ -178,37 +180,37 @@ function AddressForm({ existing, onSaved }: { existing?: Address; onSaved: () =>
                     {check.serviceable ? <CircleCheck size={16} color={colors.brand} /> : <CircleAlert size={16} color={colors.danger} />}
                     <Text className={`ml-2 flex-1 text-sm font-semibold ${check.serviceable ? 'text-brand-700' : 'text-danger'}`}>
                       {check.serviceable
-                        ? `We deliver here (${check.distanceKm} km from the store)`
-                        : `We don't deliver here yet (${check.distanceKm} km away, we deliver within ${check.radiusKm} km)`}
+                        ? t('address.weDeliver', { km: check.distanceKm })
+                        : t('address.weDontDeliver', { km: check.distanceKm, radius: check.radiusKm })}
                     </Text>
                   </View>
                 )}
               </View>
             )}
             <Pressable accessibilityRole="button" onPress={() => setManual((m) => !m)} className="mt-3 self-start" hitSlop={6}>
-              <Text className="text-sm font-bold text-brand-600">{manual ? 'Hide manual entry' : 'Location off? Enter coordinates manually'}</Text>
+              <Text className="text-sm font-bold text-brand-600">{manual ? t('address.hideManual') : t('address.manual')}</Text>
             </Pressable>
             {manual && (
               <View className="mt-2">
                 <Text className="mb-2 text-xs text-gray-600">
-                  In Google Maps, long-press your building and copy the two numbers shown (latitude, longitude).
+                  {t('address.manualHint')}
                 </Text>
                 <View className="flex-row gap-2">
                   <TextInput
-                    accessibilityLabel="Latitude"
+                    accessibilityLabel={t('address.latitude')}
                     value={latText}
                     onChangeText={(t) => setManualCoords(t, lngText)}
                     keyboardType="numbers-and-punctuation"
-                    placeholder="Latitude e.g. 12.9716"
+                    placeholder={t('address.latitudeHint')}
                     placeholderTextColor={colors.muted}
                     className="h-11 flex-1 rounded-xl border border-gray-300 px-3 text-gray-900"
                   />
                   <TextInput
-                    accessibilityLabel="Longitude"
+                    accessibilityLabel={t('address.longitude')}
                     value={lngText}
                     onChangeText={(t) => setManualCoords(latText, t)}
                     keyboardType="numbers-and-punctuation"
-                    placeholder="Longitude e.g. 77.5946"
+                    placeholder={t('address.longitudeHint')}
                     placeholderTextColor={colors.muted}
                     className="h-11 flex-1 rounded-xl border border-gray-300 px-3 text-gray-900"
                   />
@@ -219,7 +221,7 @@ function AddressForm({ existing, onSaved }: { existing?: Address; onSaved: () =>
           </Card>
 
           <Card>
-            <Text className="mb-2 text-sm font-semibold text-gray-700">Save as</Text>
+            <Text className="mb-2 text-sm font-semibold text-gray-700">{t('address.saveAs')}</Text>
             <View className="mb-4 flex-row gap-2">
               {LABELS.map((l) => (
                 <Pressable
@@ -229,15 +231,15 @@ function AddressForm({ existing, onSaved }: { existing?: Address; onSaved: () =>
                   onPress={() => setLabel(l)}
                   className={`rounded-full border px-4 py-1.5 ${label === l ? 'border-brand-500 bg-brand-50' : 'border-gray-300 active:bg-gray-100'}`}
                 >
-                  <Text className={label === l ? 'font-bold text-brand-700' : 'text-gray-700'}>{l}</Text>
+                  <Text className={label === l ? 'font-bold text-brand-700' : 'text-gray-700'}>{addressLabel(l)}</Text>
                 </Pressable>
               ))}
             </View>
-            <Input label="House / flat / floor, building" value={line1} onChangeText={setLine1} maxLength={200} error={errors.line1} placeholder="e.g. Flat 12, Lake View Apartments" />
-            <Input label="Area, street (optional)" value={line2} onChangeText={setLine2} maxLength={200} />
-            <Input label="Landmark (optional)" value={landmark} onChangeText={setLandmark} maxLength={120} placeholder="e.g. Opposite the temple" />
+            <Input label={t('address.line1')} value={line1} onChangeText={setLine1} maxLength={200} error={errors.line1} placeholder={t('address.line1Hint')} />
+            <Input label={t('address.line2')} value={line2} onChangeText={setLine2} maxLength={200} />
+            <Input label={t('address.landmark')} value={landmark} onChangeText={setLandmark} maxLength={120} placeholder={t('address.landmarkHint')} />
             <Input
-              label="PIN code"
+              label={t('address.pincode')}
               value={pincode}
               onChangeText={(t) => setPincode(t.replace(/\D/g, '').slice(0, 6))}
               keyboardType="number-pad"
@@ -245,12 +247,12 @@ function AddressForm({ existing, onSaved }: { existing?: Address; onSaved: () =>
               error={errors.pincode}
             />
             <View className="flex-row items-center justify-between pt-1">
-              <Text className="text-gray-700">Make this my default address</Text>
-              <Switch accessibilityLabel="Default address" value={isDefault} onValueChange={setIsDefault} trackColor={{ true: colors.brand }} />
+              <Text className="text-gray-700">{t('address.makeDefault')}</Text>
+              <Switch accessibilityLabel={t('address.defaultA11y')} value={isDefault} onValueChange={setIsDefault} trackColor={{ true: colors.brand }} />
             </View>
           </Card>
 
-          <Button title={existing ? 'Save changes' : 'Save address'} loading={save.isPending} onPress={submit} />
+          <Button title={existing ? t('address.saveChanges') : t('address.save')} loading={save.isPending} onPress={submit} />
         </NarrowColumn>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -261,14 +263,15 @@ export function AddressFormScreen({ navigation, route }: AppScreenProps<'Address
   const addressId = route.params?.addressId != null ? Number(route.params.addressId) : undefined;
   const addresses = useAddresses();
   const existing = addressId != null ? addresses.data?.find((a) => a.id === addressId) : undefined;
+  const t = useT();
 
   useLayoutEffect(() => {
-    navigation.setOptions({ title: addressId != null ? 'Edit address' : 'Add address' });
-  }, [navigation, addressId]);
+    navigation.setOptions({ title: addressId != null ? t('address.editTitle') : t('address.addTitle') });
+  }, [navigation, addressId, t]);
 
   if (addressId != null && !existing) {
     if (addresses.error) return <ErrorView message={errorMessage(addresses.error)} onRetry={() => void addresses.refetch()} />;
-    if (addresses.data) return <ErrorView message="This address no longer exists." />;
+    if (addresses.data) return <ErrorView message={t('address.gone')} />;
     return (
       <View className="gap-3 p-4">
         <Skeleton className="h-40 w-full" />

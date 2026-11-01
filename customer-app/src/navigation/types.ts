@@ -22,6 +22,10 @@ export type AppStackParamList = {
   AddressForm: { addressId?: number } | undefined;
   OrderSuccess: { orderId: number; orderNumber: string };
   OrderDetail: { orderId: number };
+  /** Send a list photo and/or voice note; mode opens with that card first. */
+  RequestOrder: { mode?: 'photo' | 'voice' } | undefined;
+  Requests: undefined;
+  RequestDetail: { requestId: number };
 };
 
 export type AuthScreenProps<T extends keyof AuthStackParamList> = NativeStackScreenProps<AuthStackParamList, T>;

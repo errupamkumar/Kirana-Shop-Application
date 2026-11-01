@@ -1,4 +1,5 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
+import { getLang, hasMessage, t } from '@/i18n'
 import { API_BASE_URL } from './env'
 import type { AdminProfile, ApiErrorBody, TokenPair } from './types'
 
@@ -107,15 +108,22 @@ export function apiError(error: unknown): ApiErrorBody | undefined {
   return undefined
 }
 
-/** A human readable message for toasts. */
-export function apiErrorMessage(error: unknown, fallback = 'Something went wrong'): string {
+/**
+ * A human readable message for toasts. English shows the server's own message with field details; Hindi translates by
+ * error code (field details stay as they are).
+ */
+export function apiErrorMessage(error: unknown, fallback?: string): string {
   const body = apiError(error)
   if (body) {
     const details = Object.entries(body.details ?? {})
       .filter(([, v]) => typeof v === 'string')
       .map(([k, v]) => `${k}: ${v as string}`)
-    return details.length ? `${body.message} (${details.join('; ')})` : body.message
+    const english = details.length ? `${body.message} (${details.join('; ')})` : body.message
+    if (getLang() === 'en') return english
+    if (body.code === 'VALIDATION_ERROR') return t('error.VALIDATION_ERROR', { message: english })
+    const key = `error.${body.code}`
+    return hasMessage(key) ? t(key) : english
   }
-  if (axios.isAxiosError(error) && !error.response) return 'Cannot reach the server'
-  return fallback
+  if (axios.isAxiosError(error) && !error.response) return t('error.offline')
+  return fallback ?? t('error.generic')
 }

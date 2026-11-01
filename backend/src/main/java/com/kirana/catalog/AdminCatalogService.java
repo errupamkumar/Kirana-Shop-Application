@@ -76,6 +76,7 @@ public class AdminCatalogService {
             throw ApiException.validation("slug", "is already used by another category");
         }
         c.setName(req.name().trim());
+        c.setNameHi(blankToNull(req.nameHi()));
         c.setSlug(slug);
         c.setImageUrl(blankToNull(req.imageUrl()));
         c.setSortOrder(req.sortOrder());
@@ -143,6 +144,7 @@ public class AdminCatalogService {
     private void applyProduct(Product p, ProductRequest req) {
         p.setCategory(category(req.categoryId()));
         p.setName(req.name().trim());
+        p.setNameHi(blankToNull(req.nameHi()));
         p.setDescription(blankToNull(req.description()));
         p.setBrand(blankToNull(req.brand()));
         p.setImageUrl(blankToNull(req.imageUrl()));

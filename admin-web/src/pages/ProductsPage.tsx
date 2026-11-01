@@ -14,10 +14,12 @@ import { formatInr } from '@/lib/format'
 import { useCategories, usePatchVariant, useProducts, useToggleProduct } from '@/lib/queries'
 import type { Product, Variant } from '@/lib/types'
 import { usePageTitle } from '@/lib/usePageTitle'
+import { t as tNow, useT } from '@/i18n'
 
 /** Stock cell: edit inline, saves on Enter or blur. */
 function StockInput({ variant }: { variant: Variant }) {
   const patch = usePatchVariant()
+  const t = useT()
   const [value, setValue] = useState(String(variant.stockQty))
   const [synced, setSynced] = useState(variant.stockQty)
   if (variant.stockQty !== synced) {
@@ -29,20 +31,20 @@ function StockInput({ variant }: { variant: Variant }) {
   function commit() {
     const qty = Number(value)
     if (!Number.isInteger(qty) || qty < 0) {
-      toast.error('Stock must be a whole number, 0 or more')
+      toast.error(tNow('products.stockInvalid'))
       setValue(String(variant.stockQty))
       return
     }
     if (qty === variant.stockQty) return
     patch.mutate(
       { id: variant.id, patch: { stockQty: qty } },
-      { onError: (e) => toast.error(apiErrorMessage(e)), onSuccess: () => toast.success(`Stock updated: ${variant.sku}`) },
+      { onError: (e) => toast.error(apiErrorMessage(e)), onSuccess: () => toast.success(tNow('products.stockUpdated', { sku: variant.sku })) },
     )
   }
 
   return (
     <Input
-      aria-label={`Stock for ${variant.sku}`}
+      aria-label={t('products.stockA11y', { sku: variant.sku })}
       type="number"
       min="0"
       className={`h-8 w-20 ${variant.stockQty === 0 ? 'border-destructive text-destructive' : ''}`}
@@ -56,6 +58,7 @@ function StockInput({ variant }: { variant: Variant }) {
 
 function VariantRows({ product }: { product: Product }) {
   const patch = usePatchVariant()
+  const t = useT()
   return (
     <ul className="space-y-1.5">
       {product.variants.map((v) => (
@@ -73,10 +76,10 @@ function VariantRows({ product }: { product: Product }) {
             disabled={v.stockQty === 0}
             onClick={() => patch.mutate({ id: v.id, patch: { stockQty: 0 } }, { onError: (e) => toast.error(apiErrorMessage(e)) })}
           >
-            Out of stock
+            {t('products.outOfStock')}
           </Button>
           <Switch
-            aria-label={`${v.sku} active`}
+            aria-label={t('products.activeA11y', { sku: v.sku })}
             checked={v.active}
             onCheckedChange={(active) => patch.mutate({ id: v.id, patch: { active } }, { onError: (e) => toast.error(apiErrorMessage(e)) })}
           />
@@ -87,7 +90,8 @@ function VariantRows({ product }: { product: Product }) {
 }
 
 export default function ProductsPage() {
-  usePageTitle('Products')
+  const t = useT()
+  usePageTitle(t('products.title'))
   const [params, setParams] = useSearchParams()
   const [search, setSearch] = useState(params.get('q') ?? '')
   const [editing, setEditing] = useState<Product | null>(null)
@@ -116,27 +120,28 @@ export default function ProductsPage() {
   const columns = useMemo<ColumnDef<Product>[]>(
     () => [
       {
-        header: 'Product',
+        header: () => tNow('products.colProduct'),
         id: 'product',
         cell: ({ row }) => (
           <div className="flex items-center gap-3">
             <Thumb url={row.original.imageUrl} alt={row.original.name} />
             <div className="leading-tight">
               <div className="font-medium">{row.original.name}</div>
+              {row.original.nameHi && <div className="text-xs" lang="hi">{row.original.nameHi}</div>}
               <div className="text-xs text-muted-foreground">
-                {row.original.brand ?? 'No brand'} · {row.original.categoryName}
+                {row.original.brand ?? tNow('products.noBrand')} · {row.original.categoryName}
               </div>
             </div>
           </div>
         ),
       },
-      { header: 'Variants: price · stock · active', id: 'variants', cell: ({ row }) => <VariantRows product={row.original} /> },
+      { header: () => tNow('products.colVariants'), id: 'variants', cell: ({ row }) => <VariantRows product={row.original} /> },
       {
-        header: 'Visible',
+        header: () => tNow('products.colVisible'),
         id: 'active',
         cell: ({ row }) => (
           <Switch
-            aria-label={`${row.original.name} visible`}
+            aria-label={tNow('products.visibleA11y', { name: row.original.name })}
             checked={row.original.active}
             onCheckedChange={(value) =>
               toggle.mutate({ id: row.original.id, active: value }, { onError: (e) => toast.error(apiErrorMessage(e)) })
@@ -151,7 +156,7 @@ export default function ProductsPage() {
           <Button
             variant="ghost"
             size="icon"
-            aria-label={`Edit ${row.original.name}`}
+            aria-label={tNow('products.editA11y', { name: row.original.name })}
             onClick={() => {
               setEditing(row.original)
               setDialogOpen(true)
@@ -170,8 +175,8 @@ export default function ProductsPage() {
   return (
     <>
       <PageHeader
-        title="Products"
-        description="Edit stock inline; switches save immediately."
+        title={t('products.title')}
+        description={t('products.description')}
         actions={
           <Button
             onClick={() => {
@@ -179,7 +184,7 @@ export default function ProductsPage() {
               setDialogOpen(true)
             }}
           >
-            <Plus /> New product
+            <Plus /> {t('products.new')}
           </Button>
         }
       />
@@ -193,8 +198,8 @@ export default function ProductsPage() {
         >
           <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
           <Input
-            aria-label="Search products"
-            placeholder="Search name or brand"
+            aria-label={t('products.search')}
+            placeholder={t('products.searchPlaceholder')}
             className="w-full pl-8 sm:w-64"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -202,22 +207,22 @@ export default function ProductsPage() {
           />
         </form>
         <select
-          aria-label="Category"
+          aria-label={t('products.category')}
           className={`${selectClass} w-full sm:w-auto`}
           value={categoryId ?? ''}
           onChange={(e) => setParam('categoryId', e.target.value || undefined)}
         >
-          <option value="">All categories</option>
+          <option value="">{t('products.allCategories')}</option>
           {categories.data?.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
             </option>
           ))}
         </select>
-        <select aria-label="Visibility" className={`${selectClass} w-full sm:w-auto`} value={activeParam ?? ''} onChange={(e) => setParam('active', e.target.value || undefined)}>
-          <option value="">Visible and hidden</option>
-          <option value="true">Visible only</option>
-          <option value="false">Hidden only</option>
+        <select aria-label={t('products.visibility')} className={`${selectClass} w-full sm:w-auto`} value={activeParam ?? ''} onChange={(e) => setParam('active', e.target.value || undefined)}>
+          <option value="">{t('products.visibleAndHidden')}</option>
+          <option value="true">{t('products.visibleOnly')}</option>
+          <option value="false">{t('products.hiddenOnly')}</option>
         </select>
       </div>
 
@@ -226,31 +231,32 @@ export default function ProductsPage() {
       ) : isLoading ? (
         <LoadingRows />
       ) : !data || data.content.length === 0 ? (
-        <EmptyState message="No products found." />
+        <EmptyState message={t('products.none')} />
       ) : (
         <>
         {/* Phones: one card per product with the same inline controls */}
-        <ul className="space-y-3 md:hidden" aria-label="Products">
+        <ul className="space-y-3 md:hidden" aria-label={t('products.title')}>
           {data.content.map((p) => (
             <li key={p.id} className={`rounded-lg border bg-background p-3 ${p.active ? '' : 'opacity-60'}`}>
               <div className="flex items-start gap-3">
                 <Thumb url={p.imageUrl} alt={p.name} className="size-12" />
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">{p.name}</div>
+                  {p.nameHi && <div className="truncate text-xs" lang="hi">{p.nameHi}</div>}
                   <div className="truncate text-xs text-muted-foreground">
-                    {p.brand ?? 'No brand'} · {p.categoryName}
+                    {p.brand ?? t('products.noBrand')} · {p.categoryName}
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
                   <Switch
-                    aria-label={`${p.name} visible`}
+                    aria-label={t('products.visibleA11y', { name: p.name })}
                     checked={p.active}
                     onCheckedChange={(value) => toggle.mutate({ id: p.id, active: value }, { onError: (e) => toast.error(apiErrorMessage(e)) })}
                   />
                   <Button
                     variant="ghost"
                     size="icon"
-                    aria-label={`Edit ${p.name}`}
+                    aria-label={t('products.editA11y', { name: p.name })}
                     onClick={() => {
                       setEditing(p)
                       setDialogOpen(true)

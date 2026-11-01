@@ -44,6 +44,25 @@ class CatalogIntegrationTest extends IntegrationTest {
     }
 
     @Test
+    void hindiNamesAreReturnedAndSearchable() throws Exception {
+        JsonNode catalogBody = body(get("/api/v1/app/catalog", null).andExpect(status().isOk()));
+        assertThat(catalogBody.at("/categories/2/nameHi").asText()).isEqualTo("आटा, चावल और दाल");
+
+        // Hindi search finds the same product as the English one
+        JsonNode hindi = body(get("/api/v1/app/products?q=बासमती", null));
+        assertThat(hindi.at("/content/0/name").asText()).isEqualTo("Basmati Rice");
+        assertThat(hindi.at("/content/0/nameHi").asText()).isEqualTo("बासमती चावल");
+
+        // Admin can set and clear the Hindi name
+        String admin = adminToken();
+        String suffix = uniqueSuffix();
+        JsonNode created = body(postJson("/api/v1/admin/categories", admin,
+                Map.of("name", "Pooja Items " + suffix, "nameHi", "पूजा सामग्री", "sortOrder", 30, "active", true))
+                .andExpect(status().isCreated()));
+        assertThat(created.get("nameHi").asText()).isEqualTo("पूजा सामग्री");
+    }
+
+    @Test
     void categoryCrudAndSoftDelete() throws Exception {
         String admin = adminToken();
         String suffix = uniqueSuffix();

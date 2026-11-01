@@ -23,6 +23,7 @@ public final class AdminCatalogDtos {
 
     public record CategoryRequest(
             @NotBlank @Size(max = 80) String name,
+            @Size(max = 80) String nameHi,
             @Size(max = 90) @Pattern(regexp = "^$|^[a-z0-9]+(-[a-z0-9]+)*$", message = "must be lowercase words separated by -")
             String slug,
             @Size(max = 500) String imageUrl,
@@ -30,10 +31,10 @@ public final class AdminCatalogDtos {
             @NotNull Boolean active) {
     }
 
-    public record CategoryResponse(Long id, String name, String slug, String imageUrl, int sortOrder, boolean active,
+    public record CategoryResponse(Long id, String name, String nameHi, String slug, String imageUrl, int sortOrder, boolean active,
                                    long productCount) {
         static CategoryResponse from(Category c, long productCount) {
-            return new CategoryResponse(c.getId(), c.getName(), c.getSlug(), c.getImageUrl(), c.getSortOrder(),
+            return new CategoryResponse(c.getId(), c.getName(), c.getNameHi(), c.getSlug(), c.getImageUrl(), c.getSortOrder(),
                     c.isActive(), productCount);
         }
     }
@@ -63,6 +64,7 @@ public final class AdminCatalogDtos {
     public record ProductRequest(
             @NotNull Long categoryId,
             @NotBlank @Size(max = 160) String name,
+            @Size(max = 160) String nameHi,
             @Size(max = 2000) String description,
             @Size(max = 80) String brand,
             @Size(max = 500) String imageUrl,
@@ -90,11 +92,11 @@ public final class AdminCatalogDtos {
         }
     }
 
-    public record ProductResponse(Long id, Long categoryId, String categoryName, String name, String description,
+    public record ProductResponse(Long id, Long categoryId, String categoryName, String name, String nameHi, String description,
                                   String brand, String imageUrl, boolean active, List<VariantResponse> variants,
                                   Instant createdAt, Instant updatedAt) {
         static ProductResponse from(Product p) {
-            return new ProductResponse(p.getId(), p.getCategory().getId(), p.getCategory().getName(), p.getName(),
+            return new ProductResponse(p.getId(), p.getCategory().getId(), p.getCategory().getName(), p.getName(), p.getNameHi(),
                     p.getDescription(), p.getBrand(), p.getImageUrl(), p.isActive(),
                     p.getVariants().stream().map(VariantResponse::from).toList(), p.getCreatedAt(), p.getUpdatedAt());
         }

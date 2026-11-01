@@ -3,6 +3,7 @@ import { DefaultTheme, NavigationContainer, type LinkingOptions } from '@react-n
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { House, ReceiptText, UserRound } from 'lucide-react-native';
 import { useEffect } from 'react';
+import { useLanguageReady, useT } from '../i18n';
 import { ActivityIndicator, Platform, Text, View } from 'react-native';
 import { AddressesScreen } from '../screens/AddressesScreen';
 import { AddressFormScreen } from '../screens/AddressFormScreen';
@@ -15,6 +16,9 @@ import { OrderDetailScreen } from '../screens/OrderDetailScreen';
 import { OrderSuccessScreen } from '../screens/OrderSuccessScreen';
 import { OtpScreen } from '../screens/OtpScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { RequestDetailScreen } from '../screens/RequestDetailScreen';
+import { RequestOrderScreen } from '../screens/RequestOrderScreen';
+import { RequestsScreen } from '../screens/RequestsScreen';
 import { SearchScreen } from '../screens/SearchScreen';
 import { useAuthStore } from '../store/session';
 import { colors } from '../theme';
@@ -53,11 +57,15 @@ const linking: LinkingOptions<ReactNavigation.RootParamList> = {
       AddressForm: { path: 'address/:addressId?', parse: { addressId: Number } },
       OrderSuccess: { path: 'order-placed/:orderId', parse: { orderId: Number } },
       OrderDetail: { path: 'orders/:orderId', parse: { orderId: Number } },
+      RequestOrder: 'send-list',
+      Requests: 'requests',
+      RequestDetail: { path: 'requests/:requestId', parse: { requestId: Number } },
     },
   } as LinkingOptions<ReactNavigation.RootParamList>['config'],
 };
 
 function MainTabs() {
+  const t = useT();
   return (
     <Tabs.Navigator
       screenOptions={{
@@ -66,19 +74,19 @@ function MainTabs() {
         tabBarInactiveTintColor: colors.muted,
         tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
         // Browsers have no bottom safe-area inset, so give the labels explicit room there
-        tabBarStyle: Platform.OS === 'web' ? { borderTopColor: colors.line, height: 64, paddingTop: 6, paddingBottom: 8 } : { borderTopColor: colors.line },
+        tabBarStyle: Platform.OS === 'web' ? { borderTopColor: colors.line, height: 70, paddingTop: 6, paddingBottom: 8 } : { borderTopColor: colors.line },
       }}
     >
-      <Tabs.Screen name="Home" component={HomeScreen} options={{ title: 'Home', tabBarIcon: ({ color, size }) => <House color={color} size={size - 2} /> }} />
+      <Tabs.Screen name="Home" component={HomeScreen} options={{ title: t('tabs.home'), tabBarIcon: ({ color, size }) => <House color={color} size={size - 2} /> }} />
       <Tabs.Screen
         name="Orders"
         component={MyOrdersScreen}
-        options={{ title: 'Orders', tabBarIcon: ({ color, size }) => <ReceiptText color={color} size={size - 2} /> }}
+        options={{ title: t('tabs.orders'), tabBarIcon: ({ color, size }) => <ReceiptText color={color} size={size - 2} /> }}
       />
       <Tabs.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ title: 'Account', tabBarIcon: ({ color, size }) => <UserRound color={color} size={size - 2} /> }}
+        options={{ title: t('tabs.account'), tabBarIcon: ({ color, size }) => <UserRound color={color} size={size - 2} /> }}
       />
     </Tabs.Navigator>
   );
@@ -99,12 +107,14 @@ function Splash() {
 export function RootNavigator() {
   const status = useAuthStore((s) => s.status);
   const bootstrap = useAuthStore((s) => s.bootstrap);
+  const languageReady = useLanguageReady();
+  const t = useT();
 
   useEffect(() => {
     void bootstrap();
   }, [bootstrap]);
 
-  if (status === 'loading') return <Splash />;
+  if (status === 'loading' || !languageReady) return <Splash />;
 
   return (
     <NavigationContainer
@@ -114,11 +124,11 @@ export function RootNavigator() {
     >
       {status === 'signedOut' ? (
         <AuthStack.Navigator screenOptions={{ headerShown: false }}>
-          <AuthStack.Screen name="Login" component={LoginScreen} options={{ title: 'Log in' }} />
+          <AuthStack.Screen name="Login" component={LoginScreen} options={{ title: t('login.screenTitle') }} />
           <AuthStack.Screen
             name="Otp"
             component={OtpScreen}
-            options={{ headerShown: true, title: 'Verify', headerShadowVisible: false, headerTintColor: colors.ink }}
+            options={{ headerShown: true, title: t('otp.screenTitle'), headerShadowVisible: false, headerTintColor: colors.ink }}
           />
         </AuthStack.Navigator>
       ) : (
@@ -131,14 +141,17 @@ export function RootNavigator() {
             animation: Platform.OS === 'web' ? 'none' : 'slide_from_right',
           }}
         >
-          <AppStack.Screen name="Tabs" component={MainTabs} options={{ headerShown: false, title: 'Groceries' }} />
+          <AppStack.Screen name="Tabs" component={MainTabs} options={{ headerShown: false, title: t('home.screenTitle') }} />
           <AppStack.Screen name="Category" component={CategoryScreen} />
-          <AppStack.Screen name="Search" component={SearchScreen} options={{ title: 'Search' }} />
-          <AppStack.Screen name="Cart" component={CartScreen} options={{ title: 'Cart & checkout' }} />
-          <AppStack.Screen name="Addresses" component={AddressesScreen} options={{ title: 'Delivery address' }} />
-          <AppStack.Screen name="AddressForm" component={AddressFormScreen} options={{ title: 'Address' }} />
-          <AppStack.Screen name="OrderSuccess" component={OrderSuccessScreen} options={{ headerShown: false, gestureEnabled: false, title: 'Order placed' }} />
-          <AppStack.Screen name="OrderDetail" component={OrderDetailScreen} options={{ title: 'Order' }} />
+          <AppStack.Screen name="Search" component={SearchScreen} options={{ title: t('search.screenTitle') }} />
+          <AppStack.Screen name="Cart" component={CartScreen} options={{ title: t('cart.screenTitle') }} />
+          <AppStack.Screen name="Addresses" component={AddressesScreen} options={{ title: t('address.screenTitle') }} />
+          <AppStack.Screen name="AddressForm" component={AddressFormScreen} options={{ title: t('address.addTitle') }} />
+          <AppStack.Screen name="OrderSuccess" component={OrderSuccessScreen} options={{ headerShown: false, gestureEnabled: false, title: t('success.screenTitle') }} />
+          <AppStack.Screen name="OrderDetail" component={OrderDetailScreen} options={{ title: t('order.screenTitle') }} />
+          <AppStack.Screen name="RequestOrder" component={RequestOrderScreen} options={{ title: t('request.screenTitle') }} />
+          <AppStack.Screen name="Requests" component={RequestsScreen} options={{ title: t('requests.title') }} />
+          <AppStack.Screen name="RequestDetail" component={RequestDetailScreen} options={{ title: t('requests.title') }} />
         </AppStack.Navigator>
       )}
     </NavigationContainer>

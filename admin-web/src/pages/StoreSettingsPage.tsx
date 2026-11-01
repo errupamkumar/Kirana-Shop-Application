@@ -7,9 +7,11 @@ import { formatDateTime } from '@/lib/format'
 import { useSaveSettings, useSettings } from '@/lib/queries'
 import { toSettingsForm, toSettingsRequest } from '@/lib/schemas'
 import { usePageTitle } from '@/lib/usePageTitle'
+import { t as tNow, useT } from '@/i18n'
 
 export default function StoreSettingsPage() {
-  usePageTitle('Store settings')
+  const t = useT()
+  usePageTitle(t('settings.title'))
   const { data, isLoading, error, refetch } = useSettings()
   const save = useSaveSettings()
   const initial = useMemo(() => (data ? toSettingsForm(data) : null), [data])
@@ -17,8 +19,12 @@ export default function StoreSettingsPage() {
   return (
     <>
       <PageHeader
-        title="Store settings"
-        description={data ? `Last updated ${formatDateTime(data.updatedAt)}${data.updatedBy ? ` by ${data.updatedBy}` : ''}. The app picks up changes on its next refresh.` : undefined}
+        title={t('settings.title')}
+        description={
+          data
+            ? `${data.updatedBy ? t('settings.lastUpdatedBy', { time: formatDateTime(data.updatedAt), who: data.updatedBy }) : t('settings.lastUpdated', { time: formatDateTime(data.updatedAt) })}. ${t('settings.refreshNote')}`
+            : undefined
+        }
       />
       {error ? (
         <ErrorState error={error} onRetry={() => void refetch()} />
@@ -31,7 +37,7 @@ export default function StoreSettingsPage() {
             saving={save.isPending}
             onSubmit={(values) =>
               save.mutate(toSettingsRequest(values), {
-                onSuccess: () => toast.success('Settings saved'),
+                onSuccess: () => toast.success(tNow('settings.saved')),
                 onError: (e) => toast.error(apiErrorMessage(e)),
               })
             }

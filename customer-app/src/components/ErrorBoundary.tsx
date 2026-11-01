@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { t } from '../i18n';
 
 interface State {
   error: Error | null;
@@ -23,16 +24,16 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
     return (
       <View className="flex-1 items-center justify-center bg-white p-8">
         <Text className="text-5xl">😕</Text>
-        <Text className="mt-4 text-center text-xl font-extrabold text-gray-900">Something went wrong</Text>
+        <Text className="mt-4 text-center text-xl font-extrabold text-gray-900">{t('crash.title')}</Text>
         <Text className="mt-2 text-center text-gray-500">
-          Sorry about that. Your cart is saved. Try again, and if it keeps happening, restart the app.
+          {t('crash.body')}
         </Text>
         <Pressable
           accessibilityRole="button"
           onPress={() => this.setState({ error: null })}
           className="mt-6 rounded-xl bg-brand-500 px-6 py-3 active:bg-brand-600"
         >
-          <Text className="font-bold text-white">Try again</Text>
+          <Text className="font-bold text-white">{t('common.tryAgain')}</Text>
         </Pressable>
       </View>
     );

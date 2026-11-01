@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from '@tanstack/react-table'
-import { RefreshCw, Search } from 'lucide-react'
+import { NotebookPen, RefreshCw, Search } from 'lucide-react'
 import { useSearchParams } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,19 +9,25 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { EmptyState, ErrorState, LoadingRows, PageHeader, Pagination, StatusBadge, selectClass } from '@/components/common'
 import { OrderDrawer } from '@/components/OrderDrawer'
 import { formatDateTime, formatInr } from '@/lib/format'
-import { ALL_STATUSES, paymentLabel, STATUS_LABEL } from '@/lib/orderStatus'
+import { t, useT } from '@/i18n'
+import { ALL_STATUSES, paymentLabel, statusLabel } from '@/lib/orderStatus'
 import { useOrders } from '@/lib/queries'
 import type { OrderStatus, OrderSummary } from '@/lib/types'
 import { usePageTitle } from '@/lib/usePageTitle'
 
 const columns: ColumnDef<OrderSummary>[] = [
   {
-    header: 'Order',
+    header: () => t('orders.colOrder'),
     accessorKey: 'orderNumber',
-    cell: ({ row }) => <span className="font-medium">{row.original.orderNumber}</span>,
+    cell: ({ row }) => (
+      <span className="inline-flex items-center gap-1.5 font-medium">
+        {row.original.orderNumber}
+        {row.original.requestId != null && <NotebookPen className="size-3.5 text-emerald-600" aria-label={t('orders.fromRequest')} />}
+      </span>
+    ),
   },
   {
-    header: 'Customer',
+    header: () => t('orders.colCustomer'),
     id: 'customer',
     cell: ({ row }) => (
       <div className="leading-tight">
@@ -30,14 +36,14 @@ const columns: ColumnDef<OrderSummary>[] = [
       </div>
     ),
   },
-  { header: 'Items', accessorKey: 'itemCount' },
+  { header: () => t('orders.colItems'), accessorKey: 'itemCount' },
   {
-    header: 'Total',
+    header: () => t('orders.colTotal'),
     accessorKey: 'total',
     cell: ({ row }) => <span className="tabular-nums">{formatInr(row.original.total)}</span>,
   },
   {
-    header: 'Payment',
+    header: () => t('orders.colPayment'),
     id: 'payment',
     cell: ({ row }) => (
       <div className="flex flex-col gap-1">
@@ -46,12 +52,13 @@ const columns: ColumnDef<OrderSummary>[] = [
       </div>
     ),
   },
-  { header: 'Status', accessorKey: 'status', cell: ({ row }) => <StatusBadge status={row.original.status} /> },
-  { header: 'Placed', accessorKey: 'placedAt', cell: ({ row }) => formatDateTime(row.original.placedAt) },
+  { header: () => t('orders.colStatus'), accessorKey: 'status', cell: ({ row }) => <StatusBadge status={row.original.status} /> },
+  { header: () => t('orders.colPlaced'), accessorKey: 'placedAt', cell: ({ row }) => formatDateTime(row.original.placedAt) },
 ]
 
 export default function OrdersPage() {
-  usePageTitle('Orders')
+  const tr = useT()
+  usePageTitle(tr('orders.title'))
   const [params, setParams] = useSearchParams()
   const [search, setSearch] = useState(params.get('q') ?? '')
   const status = (params.get('status') as OrderStatus | null) ?? undefined
@@ -79,11 +86,11 @@ export default function OrdersPage() {
   return (
     <>
       <PageHeader
-        title="Orders"
-        description="Updates every 10 seconds. New orders play a sound."
+        title={tr('orders.title')}
+        description={tr('orders.description')}
         actions={
           <Button variant="outline" size="sm" onClick={() => void refetch()} disabled={isFetching}>
-            <RefreshCw className={isFetching ? 'animate-spin' : undefined} /> Refresh
+            <RefreshCw className={isFetching ? 'animate-spin' : undefined} /> {tr('orders.refresh')}
           </Button>
         }
       />
@@ -98,8 +105,8 @@ export default function OrdersPage() {
         >
           <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
           <Input
-            aria-label="Search order number or phone"
-            placeholder="Order number or phone"
+            aria-label={tr('orders.search')}
+            placeholder={tr('orders.searchPlaceholder')}
             className="w-full pl-8 sm:w-64"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -107,24 +114,24 @@ export default function OrdersPage() {
           />
         </form>
         <select
-          aria-label="Status"
+          aria-label={tr('orders.status')}
           className={`${selectClass} col-span-2 w-full sm:col-span-1 sm:w-auto`}
           value={status ?? ''}
           onChange={(e) => setParam('status', e.target.value || undefined)}
         >
-          <option value="">All statuses</option>
+          <option value="">{tr('orders.allStatuses')}</option>
           {ALL_STATUSES.map((s) => (
             <option key={s} value={s}>
-              {STATUS_LABEL[s]}
+              {statusLabel(s)}
             </option>
           ))}
         </select>
         <label className="flex flex-col gap-1 text-xs text-muted-foreground sm:flex-row sm:items-center sm:gap-2 sm:text-sm">
-          From
+          {tr('orders.from')}
           <Input type="date" className="w-full sm:w-40" value={from ?? ''} onChange={(e) => setParam('from', e.target.value || undefined)} />
         </label>
         <label className="flex flex-col gap-1 text-xs text-muted-foreground sm:flex-row sm:items-center sm:gap-2 sm:text-sm">
-          To
+          {tr('orders.to')}
           <Input type="date" className="w-full sm:w-40" value={to ?? ''} onChange={(e) => setParam('to', e.target.value || undefined)} />
         </label>
         {(status || from || to || q) && (
@@ -136,7 +143,7 @@ export default function OrdersPage() {
               setParams(new URLSearchParams())
             }}
           >
-            Clear filters
+            {tr('orders.clearFilters')}
           </Button>
         )}
       </div>
@@ -146,11 +153,11 @@ export default function OrdersPage() {
       ) : isLoading ? (
         <LoadingRows />
       ) : !data || data.content.length === 0 ? (
-        <EmptyState message="No orders match these filters." />
+        <EmptyState message={tr('orders.none')} />
       ) : (
         <>
         {/* Phones: one card per order */}
-        <ul className="space-y-2 md:hidden" aria-label="Orders">
+        <ul className="space-y-2 md:hidden" aria-label={tr('orders.title')}>
           {data.content.map((o) => (
             <li key={o.id}>
               <button
@@ -164,13 +171,13 @@ export default function OrdersPage() {
                 </div>
                 <div className="mt-1 flex items-center justify-between gap-2 text-sm">
                   <span className="truncate text-muted-foreground">
-                    {o.customerName ?? 'Customer'} · {o.customerPhone}
+                    {o.customerName ?? tr('common.customer')} · {o.customerPhone}
                   </span>
                   <span className="font-semibold tabular-nums">{formatInr(o.total)}</span>
                 </div>
                 <div className="mt-1 flex items-center justify-between gap-2 text-xs text-muted-foreground">
                   <span>
-                    {o.itemCount} items · {o.paymentMethod} · {paymentLabel(o.status, o.paymentStatus)}
+                    {tr('orders.items', { n: o.itemCount })} · {o.paymentMethod} · {paymentLabel(o.status, o.paymentStatus)}
                   </span>
                   <span>{formatDateTime(o.placedAt)}</span>
                 </div>

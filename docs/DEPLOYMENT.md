@@ -32,7 +32,7 @@ You need:
 - On Windows: **PowerShell** (built in) for SSH, and **Git** (optional, recommended).
 - For the Android APK: a free **Expo account** (https://expo.dev/signup) if you build with EAS (recommended), or the local Android toolchain described in the README.
 
-> **No domain yet?** That's fine. The free [sslip.io](https://sslip.io) service turns your server's IP into hostnames such as `api.152-67-10-20.sslip.io`, and Let's Encrypt issues real certificates for them. You can switch to your own domain later in 5 minutes (section 10).
+> **No domain yet?** That's fine. The free [sslip.io](https://sslip.io) service turns your server's IP into hostnames such as `api.152-67-10-20.sslip.io`, and Let's Encrypt issues real certificates for them. You can switch to your own domain later in 5 minutes (section 11).
 
 ---
 
@@ -105,12 +105,14 @@ Type `yes` the first time. You are now on the server (`ubuntu@kirana:~$`). Type 
 
 ## 6. Copy the project to the server
 
-**Option A: Git (recommended for updates).** Push the project to a private GitHub repository from your PC, then on the server:
+**Option A: Git (recommended for updates).** Push the project to GitHub from your PC (`git push`), then on the server:
 
 ```bash
-git clone https://github.com/<you>/kirana.git ~/kirana
+git clone https://github.com/errupamkumar/Kirana-Shop-Application.git ~/kirana
 # For a private repo, GitHub asks for a username and a personal access token (Settings → Developer settings → Tokens)
 ```
+
+Secrets never go to GitHub: `.env` and `deploy/.env.prod` are git-ignored, and `.env.prod` is created on the server in section 8. Later updates are `git push` on your PC and `bash deploy/scripts/deploy.sh` on the server (it pulls first).
 
 **Option B: copy a zip from your PC** (no Git account needed). In PowerShell on your PC, from the project folder:
 
@@ -163,7 +165,7 @@ Fill it in (Ctrl+O to save, Ctrl+X to exit):
    openssl rand -base64 32    # APP_ENCRYPTION_KEY  (also save a copy in your password manager)
    ```
 3. **Owner login.** `ADMIN_EMAIL` and a strong `ADMIN_PASSWORD` (12+ characters). This account is created on first start.
-4. **Customer login for testing.** Keep `OTP_PROVIDER=logging` and `OTP_TEST_NUMBERS=+919999999999` for now: the number `9999999999` logs in with code `123456`, and any other number's code appears in the backend log (section 11). Before real customers arrive, switch to MSG91 and empty `OTP_TEST_NUMBERS` (section 10).
+4. **Customer login for testing.** Keep `OTP_PROVIDER=logging` and `OTP_TEST_NUMBERS=+919999999999` for now: the number `9999999999` logs in with code `123456`, and any other number's code appears in the backend log (section 12). Before real customers arrive, switch to MSG91 and empty `OTP_TEST_NUMBERS` (section 11).
 
 Protect the file: `chmod 600 .env.prod`.
 
@@ -265,6 +267,17 @@ df -h; docker system df        # disk usage
 gunzip -c ~/kirana-backups/kirana-YYYYMMDD-HHMMSS.sql.gz | kc exec -T mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" kirana'
 docker run --rm -v kirana-prod_media:/media -v ~/kirana-backups:/backup alpine tar xzf /backup/media-YYYYMMDD-HHMMSS.tar.gz -C /media
 ```
+
+**Reset the owner's admin password.** There is no "forgot password" screen. `ADMIN_EMAIL` / `ADMIN_PASSWORD` are used only to create the first admin, so changing them later has no effect on their own. To reset, put the new password (12+ characters) in `.env.prod`, then remove the old admin; the backend recreates it on start:
+
+```bash
+nano .env.prod                                   # set ADMIN_PASSWORD (and ADMIN_EMAIL if it changes)
+kc exec mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" kirana -e "DELETE FROM admin_users"'
+kc up -d --force-recreate backend                # not "restart": restart does not read the new .env.prod
+kc logs backend | grep "Created first admin"     # confirms the new login
+```
+
+Orders, products and settings are not affected.
 
 Data lives in Docker volumes (`kirana-prod_mysql-data`, `kirana-prod_media`, `kirana-prod_caddy-data`). Never run `docker compose down -v` or `docker volume prune` on the server: that deletes them.
 

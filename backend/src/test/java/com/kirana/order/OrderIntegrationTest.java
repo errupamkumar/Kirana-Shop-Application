@@ -212,14 +212,18 @@ class OrderIntegrationTest extends IntegrationTest {
         long orderId = placeSimpleOrder();
 
         JsonNode detail = body(get("/api/v1/admin/orders/" + orderId, admin));
-        assertThat(detail.get("allowedNextStatuses").toString()).isEqualTo("[\"PACKED\",\"CANCELLED\"]");
+        assertThat(detail.get("allowedNextStatuses").toString()).isEqualTo("[\"ACCEPTED\",\"CANCELLED\"]");
 
+        // Every order is accepted before it is packed
+        setStatus(admin, orderId, "PACKED").andExpect(status().isConflict());
+        JsonNode accepted = body(setStatus(admin, orderId, "ACCEPTED").andExpect(status().isOk()));
+        assertThat(accepted.get("allowedNextStatuses").toString()).isEqualTo("[\"PACKED\",\"CANCELLED\"]");
         setStatus(admin, orderId, "PACKED").andExpect(status().isOk());
         setStatus(admin, orderId, "OUT_FOR_DELIVERY").andExpect(status().isOk());
         JsonNode delivered = body(setStatus(admin, orderId, "DELIVERED").andExpect(status().isOk()));
         assertThat(delivered.get("paymentStatus").asText()).isEqualTo("COD_COLLECTED");
         assertThat(delivered.get("deliveredAt").isNull()).isFalse();
-        assertThat(delivered.get("history").size()).isEqualTo(4);
+        assertThat(delivered.get("history").size()).isEqualTo(5);
         assertThat(delivered.get("allowedNextStatuses").size()).isZero();
 
         // Terminal: nothing else is allowed
@@ -244,7 +248,7 @@ class OrderIntegrationTest extends IntegrationTest {
     }
 
     @Test
-    void cancelRestoresStockAndCustomerCanOnlyCancelWhilePlaced() throws Exception {
+    void cancelRestoresStockAndCustomerCanCancelUntilPacked() throws Exception {
         Customer c = newCustomer();
         long address = createAddress(c, NEAR_LAT, NEAR_LNG);
         long variant = variantId(createProduct("300.00", "300.00", 10));
@@ -262,10 +266,19 @@ class OrderIntegrationTest extends IntegrationTest {
         postJson("/api/v1/app/orders/" + orderId + "/cancel", c.token(), null).andExpect(status().isConflict());
         assertThat(stockOf(variant)).isEqualTo(10);
 
+        // Accepted: the customer can still cancel (nothing is packed yet)
+        String admin = adminToken();
+        long accepted = body(placeOrder(c, key(), orderRequest(variant, 2, address, "COD", "630.00"))).get("id").asLong();
+        assertThat(body(setStatus(admin, accepted, "ACCEPTED")).get("status").asText()).isEqualTo("ACCEPTED");
+        assertThat(body(get("/api/v1/app/orders/" + accepted, c.token())).get("canCancel").asBoolean()).isTrue();
+        postJson("/api/v1/app/orders/" + accepted + "/cancel", c.token(), null).andExpect(status().isOk());
+        assertThat(stockOf(variant)).isEqualTo(10);
+
         // Once packed, only the store can cancel
         long packed = body(placeOrder(c, key(), orderRequest(variant, 2, address, "COD", "630.00"))).get("id").asLong();
-        String admin = adminToken();
+        setStatus(admin, packed, "ACCEPTED").andExpect(status().isOk());
         setStatus(admin, packed, "PACKED").andExpect(status().isOk());
+        assertThat(body(get("/api/v1/app/orders/" + packed, c.token())).get("canCancel").asBoolean()).isFalse();
         postJson("/api/v1/app/orders/" + packed + "/cancel", c.token(), null).andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("INVALID_STATUS_TRANSITION"));
         setStatus(admin, packed, "CANCELLED", "Customer unreachable").andExpect(status().isOk());
@@ -285,6 +298,7 @@ class OrderIntegrationTest extends IntegrationTest {
         get("/api/v1/admin/orders?from=2000-01-01&to=2000-01-02", admin).andExpect(jsonPath("$.totalElements").value(0));
 
         JsonNode before = body(get("/api/v1/admin/dashboard", admin));
+        setStatus(admin, orderId, "ACCEPTED");
         setStatus(admin, orderId, "PACKED");
         setStatus(admin, orderId, "OUT_FOR_DELIVERY");
         setStatus(admin, orderId, "DELIVERED");

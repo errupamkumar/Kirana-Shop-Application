@@ -58,6 +58,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/app/config", "/api/v1/app/catalog",
                                 "/api/v1/app/products", "/api/v1/app/products/*").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/app/location/check").permitAll()
+                        // Signed, expiring links to request photos and voice notes (the signature is the access check)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/media/private/*").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/**").permitAll()
                         // Staff
                         .requestMatchers("/api/v1/admin/settings/**", "/api/v1/admin/settings").hasRole("ADMIN")

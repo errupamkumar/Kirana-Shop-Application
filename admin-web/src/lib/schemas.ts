@@ -116,6 +116,7 @@ export const productSchema = z
   .object({
     categoryId: num('Choose a category'),
     name: z.string().trim().min(1, 'Required').max(160),
+    nameHi: z.string().trim().max(160),
     description: z.string().max(2000),
     brand: z.string().trim().max(80),
     imageUrl: z.string().max(500),
@@ -137,6 +138,7 @@ export type ProductForm = z.infer<typeof productSchema>
 export function toProductRequest(form: ProductForm) {
   return {
     ...form,
+    nameHi: form.nameHi || null,
     description: form.description || null,
     brand: form.brand || null,
     imageUrl: form.imageUrl || null,
@@ -146,6 +148,7 @@ export function toProductRequest(form: ProductForm) {
 
 export const categorySchema = z.object({
   name: z.string().trim().min(1, 'Required').max(80),
+  nameHi: z.string().trim().max(80),
   slug: z
     .string()
     .trim()

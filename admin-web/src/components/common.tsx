@@ -6,7 +6,8 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiErrorMessage } from '@/lib/api'
 import { mediaUrl } from '@/lib/env'
-import { STATUS_CLASS, STATUS_LABEL } from '@/lib/orderStatus'
+import { STATUS_CLASS, statusLabel } from '@/lib/orderStatus'
+import { translateMessage, useT } from '@/i18n'
 import { uploadImage } from '@/lib/queries'
 import type { OrderStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -24,21 +25,23 @@ export function PageHeader({ title, description, actions }: { title: string; des
 }
 
 export function StatusBadge({ status }: { status: OrderStatus }) {
+  useT() // re-render when the language changes
   return (
     <span className={cn('inline-flex rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap', STATUS_CLASS[status])}>
-      {STATUS_LABEL[status]}
+      {statusLabel(status)}
     </span>
   )
 }
 
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+  const t = useT()
   return (
     <div role="alert" className="flex flex-col items-center gap-3 rounded-lg border border-dashed p-10 text-center">
       <AlertTriangle className="size-6 text-destructive" />
-      <p className="text-sm text-muted-foreground">{apiErrorMessage(error, 'Could not load data')}</p>
+      <p className="text-sm text-muted-foreground">{apiErrorMessage(error, t('common.couldNotLoad'))}</p>
       {onRetry && (
         <Button variant="outline" size="sm" onClick={onRetry}>
-          Try again
+          {t('common.tryAgain')}
         </Button>
       )}
     </div>
@@ -56,8 +59,9 @@ export function EmptyState({ message, action }: { message: string; action?: Reac
 }
 
 export function LoadingRows({ rows = 5 }: { rows?: number }) {
+  const t = useT()
   return (
-    <div className="space-y-2" aria-busy="true" aria-label="Loading">
+    <div className="space-y-2" aria-busy="true" aria-label={t('common.loading')}>
       {Array.from({ length: rows }, (_, i) => (
         <Skeleton key={i} className="h-10 w-full" />
       ))}
@@ -86,7 +90,7 @@ export function Field({
       {children}
       {error ? (
         <p role="alert" className="text-xs text-destructive">
-          {error}
+          {translateMessage(error)}
         </p>
       ) : (
         hint && <p className="text-xs text-muted-foreground">{hint}</p>
@@ -108,25 +112,26 @@ export function Thumb({ url, alt, className }: { url: string | null | undefined;
 
 /** Uploads one jpg/png/webp (max 2 MB) and reports the stored URL. */
 export function ImageUpload({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+  const t = useT()
   const input = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
 
   async function handle(file: File | undefined) {
     if (!file) return
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      toast.error('Use a JPG, PNG or WebP image')
+      toast.error(t('image.badType'))
       return
     }
     if (file.size > 2 * 1024 * 1024) {
-      toast.error('Image must be at most 2 MB')
+      toast.error(t('image.tooBig'))
       return
     }
     setBusy(true)
     try {
       onChange(await uploadImage(file))
-      toast.success('Image uploaded')
+      toast.success(t('image.uploaded'))
     } catch (e) {
-      toast.error(apiErrorMessage(e, 'Upload failed'))
+      toast.error(apiErrorMessage(e, t('image.failed')))
     } finally {
       setBusy(false)
       if (input.current) input.current.value = ''
@@ -135,7 +140,7 @@ export function ImageUpload({ value, onChange }: { value: string; onChange: (url
 
   return (
     <div className="flex items-center gap-3">
-      <Thumb url={value} alt="Preview" className="size-14" />
+      <Thumb url={value} alt={t('image.preview')} className="size-14" />
       <input
         ref={input}
         type="file"
@@ -145,11 +150,11 @@ export function ImageUpload({ value, onChange }: { value: string; onChange: (url
       />
       <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => input.current?.click()}>
         {busy ? <Loader2 className="animate-spin" /> : <Upload />}
-        {value ? 'Replace image' : 'Upload image'}
+        {value ? t('image.replace') : t('image.upload')}
       </Button>
       {value && (
         <Button type="button" variant="ghost" size="sm" onClick={() => onChange('')}>
-          Remove
+          {t('image.remove')}
         </Button>
       )}
     </div>
@@ -157,17 +162,18 @@ export function ImageUpload({ value, onChange }: { value: string; onChange: (url
 }
 
 export function Pagination({ page, totalPages, onPage }: { page: number; totalPages: number; onPage: (page: number) => void }) {
+  const t = useT()
   if (totalPages <= 1) return null
   return (
     <div className="mt-4 flex items-center justify-end gap-2 text-sm">
       <Button variant="outline" size="sm" disabled={page === 0} onClick={() => onPage(page - 1)}>
-        Previous
+        {t('common.previous')}
       </Button>
       <span className="text-muted-foreground">
-        Page {page + 1} of {totalPages}
+        {t('common.pageOf', { page: page + 1, total: totalPages })}
       </span>
       <Button variant="outline" size="sm" disabled={page + 1 >= totalPages} onClick={() => onPage(page + 1)}>
-        Next
+        {t('common.next')}
       </Button>
     </div>
   )

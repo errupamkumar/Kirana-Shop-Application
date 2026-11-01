@@ -1,6 +1,7 @@
 package com.kirana.settings;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -72,6 +73,38 @@ class SettingsIntegrationTest extends IntegrationTest {
                 .andExpect(jsonPath("$.minOrderAmount").value(250.0))
                 .andExpect(jsonPath("$.deliveryCharge").value(15.0))
                 .andExpect(jsonPath("$.freeDeliveryAbove").doesNotExist());
+    }
+
+    @Test
+    void movingTheStoreMovesTheDeliveryAreaAtOnce() throws Exception {
+        String admin = adminToken();
+        ObjectNode req = json.valueToTree(defaultSettings(true, false, null, null, true));
+        req.put("storeLat", 25.1971);
+        req.put("storeLng", 85.5236);
+        req.put("maxDeliveryRadiusKm", 3);
+        call(HttpMethod.PUT, "/api/v1/admin/settings", admin, req).andExpect(status().isOk());
+
+        get("/api/v1/app/config", null)
+                .andExpect(jsonPath("$.storeLat").value(25.1971))
+                .andExpect(jsonPath("$.storeLng").value(85.5236))
+                .andExpect(jsonPath("$.maxDeliveryRadiusKm").value(3.0));
+        // About 1.1 km and 4 km north of the new store; the old Bengaluru store point is now far away
+        assertServiceable(25.2071, 85.5236, true, 1.12);
+        assertServiceable(25.2331, 85.5236, false, 4.01);
+        assertServiceable(12.971599, 77.594566, false, null);
+
+        req.put("maxDeliveryRadiusKm", 5);
+        call(HttpMethod.PUT, "/api/v1/admin/settings", admin, req).andExpect(status().isOk());
+        assertServiceable(25.2331, 85.5236, true, 4.01);
+    }
+
+    private void assertServiceable(double lat, double lng, boolean expected, Double km) throws Exception {
+        ObjectNode point = json.createObjectNode().put("lat", lat).put("lng", lng);
+        JsonNode check = body(call(HttpMethod.POST, "/api/v1/app/location/check", null, point).andExpect(status().isOk()));
+        assertThat(check.get("serviceable").asBoolean()).as("serviceable at %s, %s", lat, lng).isEqualTo(expected);
+        if (km != null) {
+            assertThat(check.get("distanceKm").asDouble()).isCloseTo(km, within(0.02));
+        }
     }
 
     @Test

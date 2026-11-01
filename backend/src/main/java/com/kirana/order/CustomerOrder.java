@@ -36,6 +36,8 @@ public class CustomerOrder extends TimestampedEntity {
 
     private String orderNumber;
     private Long userId;
+    /** Set when the store built this order from a customer list photo or voice note. */
+    private Long requestId;
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.VARCHAR)

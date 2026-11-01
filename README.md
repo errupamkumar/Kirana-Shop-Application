@@ -8,6 +8,17 @@ A Blinkit-inspired grocery ordering system for **one** local kirana store: custo
 | Admin web | React 19 + TypeScript, Vite, Tailwind v4, shadcn/ui, TanStack Query/Table, React Hook Form + Zod, Recharts | [admin-web/](admin-web/) |
 | Customer app | Expo SDK 58 (React Native 0.88) + TypeScript, NativeWind, React Navigation, TanStack Query, Zustand, Razorpay | [customer-app/](customer-app/) |
 
+Highlights:
+
+- **Hindi first, English optional** in both apps (the choice is remembered per device); products and categories can carry a Hindi name.
+- **Order by list photo or voice note**: customers photograph their handwritten list or record what they need; the store builds the order (catalog items plus free-text items) and accepts it, and the customer sees the bill in the app.
+- **Every order is accepted by the store**, then packed, dispatched and delivered; the customer app shows each step.
+- **The owner sets the shop's location and delivery radius** (0.5 to 20 km) on a map in Store settings: search, paste coordinates or a Google Maps link, or drag the pin. Orders, list requests and the app's "we deliver here" check follow it at once.
+
+**New here? [How to run the apps, step by step](docs/HOW_TO_RUN.md)**: backend, admin, and the customer app in a browser, Expo Go, an emulator or an APK, with the test logins.
+
+Guides for the store: **[customer guide](docs/USER_GUIDE.md)** and **[admin guide](docs/ADMIN_GUIDE.md)** (step by step with screenshots; PDFs and walkthrough videos in [guides/](guides/)).
+
 Docs: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (from zero to live on Oracle Cloud)**, [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (code flow and diagrams), [docs/API.md](docs/API.md) (every endpoint and error code), [docs/DECISIONS.md](docs/DECISIONS.md), [docs/BUILD_PROMPT.md](docs/BUILD_PROMPT.md) (spec and phase plan).
 
 ## Status
@@ -31,6 +42,8 @@ Docs: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (from zero to live on Oracle Cl
 - **Android Studio** with SDK, NDK and an emulator (or a device with USB debugging) for the customer app
 
 ## Run locally
+
+The full walkthrough for Windows, including Expo Go and the logins, is in [docs/HOW_TO_RUN.md](docs/HOW_TO_RUN.md). In short:
 
 ```bash
 # 1. Configuration and database
@@ -78,7 +91,7 @@ cd C:\k\android; $env:ANDROID_HOME = 'C:\andsdk'
 adb install -r app\build\outputs\apk\debug\app-debug.apk
 ```
 
-The installed dev client then loads JavaScript from Metro started in the repo (`npx expo start --dev-client`, plus `adb reverse tcp:8081 tcp:8081`), so day-to-day edits in the repo hot-reload without rebuilding. Rebuild the APK only when native dependencies change. Cloning the repo itself to a short path (for example `C:\kirana`) with the SDK junction avoids the copy step.
+The installed dev client then loads JavaScript from Metro started in the repo (`npx expo start --dev-client`, plus `adb reverse tcp:8081 tcp:8081`), so day-to-day edits in the repo hot-reload without rebuilding. Rebuild the APK only when native dependencies change. When they do (for example the photo and voice modules, which also add camera and microphone permissions), run `npx expo prebuild --platform android` in `C:\k` first; it regenerates `android\`, so redo step 3 afterwards. Cloning the repo itself to a short path (for example `C:\kirana`) with the SDK junction avoids the copy step.
 
 ### Customer app in a web browser (quick testing, no phone or emulator)
 
@@ -96,7 +109,7 @@ The app adapts to the window: phone layout on narrow windows, more columns on ta
 | Store admin | http://localhost:5173 with `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env` (created on first backend start when no admin exists) |
 | Customer | Phone `9999999999`, `9999999998` or `9999999997` with OTP `123456` (dev profile test numbers, no SMS). Any other number gets a real code printed in the backend log: `[DEV OTP] code for +91… is …` |
 
-The seed store is at MG Road, Bengaluru (12.971599, 77.594566) with a 5 km radius, ₹500 minimum order, ₹30 delivery, free above ₹1000, COD on and online payment off. 32 products in 8 categories, each with a starter photo (freely licensed, credited in [docs/IMAGE_CREDITS.md](docs/IMAGE_CREDITS.md)); replace them from the admin at any time.
+The seed store is at MG Road, Bengaluru (12.971599, 77.594566) with a 5 km radius, ₹500 minimum order, ₹30 delivery, free above ₹1000, COD on and online payment off. 32 products in 8 categories, each with a starter photo (freely licensed, credited in [docs/IMAGE_CREDITS.md](docs/IMAGE_CREDITS.md)); replace them from the admin at any time. Move the store to your own shop in **Settings → Location and delivery area** before testing with real addresses.
 
 To test "out of radius" on the emulator, set a mock location in the emulator's Extended controls → Location (for example 13.10, 77.59).
 
@@ -126,10 +139,10 @@ Generate secrets with `openssl rand -base64 48` (`JWT_SECRET`) and `openssl rand
 
 The complete, step-by-step server setup (Oracle Cloud Always Free VM, Docker, automatic HTTPS, Android APK for your server) is in **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**. Production files live in [deploy/](deploy/): `docker-compose.prod.yml` (MySQL, backend, Caddy with the admin and customer web apps), `Caddyfile`, `web.Dockerfile`, `.env.prod.example` and scripts for server setup, deploys and backups.
 
-
 - **Profile**: run the backend with `SPRING_PROFILES_ACTIVE=prod` (JSON logs, Swagger off, graceful shutdown, forwarded headers). Do not enable the `dev` profile: it turns on the OTP test numbers.
 - **Env vars**: `DB_URL`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `APP_ENCRYPTION_KEY`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `CORS_ALLOWED_ORIGINS` (the admin's https origin), `OTP_PROVIDER=msg91` with `MSG91_AUTH_KEY` and `MSG91_TEMPLATE_ID` (a DLT-approved template with an `##OTP##` variable), `RAZORPAY_WEBHOOK_SECRET`, `MEDIA_DIR` (a persistent volume).
-- **HTTPS**: terminate TLS at a reverse proxy (nginx, a cloud load balancer) in front of the API and the admin's static files (`admin-web/dist`, built with `VITE_API_BASE_URL=https://api.example.com`). Build the app with `EXPO_PUBLIC_API_BASE_URL=https://…` and remove `usesCleartextTraffic` from `app.config.ts` for release.
+- **HTTPS**: the `web` service (Caddy) gets Let's Encrypt certificates for the admin, shop and API hosts and proxies the API to the backend. Behind another proxy or load balancer, serve `admin-web/dist` (built with `VITE_API_BASE_URL=https://api.example.com`) and forward to the backend the same way.
+- **App builds**: `APP_ENV=preview` or `production` requires an `https://` `EXPO_PUBLIC_API_BASE_URL` and turns off cleartext HTTP; `APP_ENV=local` (emulator or USB phone with `adb reverse tcp:8080 tcp:8080`) allows `http://localhost:8080`.
 - **Backups**: schedule `mysqldump --single-transaction kirana` (or managed-database snapshots) and back up `MEDIA_DIR`. Flyway migrations run automatically on start; take a backup before deploying a new version.
 - **Health**: `GET /actuator/health` (liveness/readiness under `/actuator/health/liveness` and `/readiness` in prod).
 - **Android release**: set your real API address in [customer-app/eas.json](customer-app/eas.json) (`EXPO_PUBLIC_API_BASE_URL`, must be `https://`), then `npx eas-cli@latest build -p android --profile production` for a Play Store AAB, or `--profile preview` for an installable APK. Release builds refuse plain HTTP.
@@ -140,10 +153,13 @@ The complete, step-by-step server setup (Oracle Cloud Always Free VM, Docker, au
 
 ```
 backend/        Spring Boot API, package by feature under com.kirana (auth, catalog, checkout, order, payment, ...)
-  src/main/resources/db/migration/   Flyway V1__init.sql (schema), V2__seed.sql (dev data)
+  src/main/resources/db/migration/   Flyway V1__init.sql (schema), V2__seed.sql (sample store), V3__seed_images.sql
+  src/main/resources/seed-images/    starter photos copied to MEDIA_DIR on start
 admin-web/      Vite + React admin (src/pages, src/components, src/lib)
 customer-app/   Expo Android app (src/screens, src/components, src/hooks, src/store, src/lib)
-docs/           API.md, DECISIONS.md, BUILD_PROMPT.md
+deploy/         production stack: docker-compose.prod.yml, Caddyfile, web.Dockerfile, scripts/
+docs/           USER_GUIDE.md, ADMIN_GUIDE.md (+ images/), DEPLOYMENT.md, ARCHITECTURE.md, API.md, DECISIONS.md, IMAGE_CREDITS.md, BUILD_PROMPT.md
+guides/         PDF guides and walkthrough videos to share with customers and staff
 .claude/agents/ qa-bug-resolver.md (QA agent used to test the system)
 docker-compose.yml
 .env.example

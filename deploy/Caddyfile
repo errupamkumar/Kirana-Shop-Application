@@ -3,30 +3,31 @@
 	email {$ACME_EMAIL}
 }
 
+# Usage: import security_headers "<Permissions-Policy value>"
 (security_headers) {
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		X-Frame-Options "DENY"
-		Permissions-Policy "camera=(), microphone=(), payment=()"
+		Permissions-Policy "{args[0]}"
 		-Server
 	}
 }
 
 # REST API, uploaded media and health check
 {$API_HOST} {
-	import security_headers
+	import security_headers "camera=(), microphone=(), payment=()"
 	encode zstd gzip
 	request_body {
-		max_size 4MB
+		max_size 12MB
 	}
 	reverse_proxy backend:8080
 }
 
 # Admin web (single-page app)
 {$ADMIN_HOST} {
-	import security_headers
+	import security_headers "camera=(), microphone=(), payment=()"
 	encode zstd gzip
 	root * /srv/admin
 	header /assets/* Cache-Control "public, max-age=31536000, immutable"
@@ -34,9 +35,9 @@
 	file_server
 }
 
-# Customer web app (Expo web export)
+# Customer web app (Expo web export): its own camera and microphone are needed to photograph a list or record a voice note
 {$SHOP_HOST} {
-	import security_headers
+	import security_headers "camera=(self), microphone=(self), payment=()"
 	encode zstd gzip
 	root * /srv/shop
 	header /_expo/* Cache-Control "public, max-age=31536000, immutable"

@@ -81,6 +81,7 @@ export interface StoreSettings {
 export interface Category {
   id: number
   name: string
+  nameHi: string | null
   slug: string
   imageUrl: string | null
   sortOrder: number
@@ -105,6 +106,7 @@ export interface Product {
   categoryId: number
   categoryName: string
   name: string
+  nameHi: string | null
   description: string | null
   brand: string | null
   imageUrl: string | null
@@ -114,7 +116,7 @@ export interface Product {
   updatedAt: string
 }
 
-export type OrderStatus = 'PENDING_PAYMENT' | 'PLACED' | 'PACKED' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED'
+export type OrderStatus = 'PENDING_PAYMENT' | 'PLACED' | 'ACCEPTED' | 'PACKED' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED'
 
 export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUND_PENDING' | 'COD_PENDING' | 'COD_COLLECTED'
 
@@ -129,11 +131,13 @@ export interface OrderSummary {
   customerName: string | null
   customerPhone: string
   placedAt: string
+  requestId: number | null
 }
 
 export interface OrderItem {
   variantId: number | null
   productName: string
+  productNameHi: string | null
   variantLabel: string
   imageUrl: string | null
   mrp: number
@@ -182,6 +186,37 @@ export interface OrderDetail {
   canCancel: boolean
   allowedNextStatuses: OrderStatus[]
   payment: { gateway: string; gatewayOrderId: string; status: PaymentStatus } | null
+  /** Set when the order was built from a customer's list photo or voice note. */
+  requestId: number | null
+}
+
+export type RequestStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED'
+
+/** A customer's list photo and/or voice note. Media URLs are signed links that expire after a few hours. */
+export interface OrderRequest {
+  id: number
+  status: RequestStatus
+  imageUrl: string | null
+  audioUrl: string | null
+  audioSeconds: number | null
+  note: string | null
+  customerName: string | null
+  customerPhone: string
+  address: AddressSnapshot
+  distanceKm: number
+  orderId: number | null
+  orderNumber: string | null
+  orderStatus: OrderStatus | null
+  orderTotal: number | null
+  rejectReason: string | null
+  createdAt: string
+  handledAt: string | null
+}
+
+export interface AcceptRequestBody {
+  items: { variantId: number; qty: number }[]
+  customItems: { name: string; label: string | null; price: number; qty: number }[]
+  note: string | null
 }
 
 export interface Invoice {
@@ -199,4 +234,5 @@ export interface Dashboard {
   lowStockCount: number
   lowStock: { variantId: number; productId: number; productName: string; variantLabel: string; sku: string; stockQty: number }[]
   last7Days: { date: string; orders: number; revenue: number }[]
+  pendingRequests: number
 }
